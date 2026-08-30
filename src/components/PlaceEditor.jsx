@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import PinPicker from "./PinPicker.jsx";
-import { CloseIcon, LocateIcon, PlayIcon, PlusIcon } from "./Icons.jsx";
+import { CloseIcon, LocateIcon, PlayIcon, PlusIcon, SearchIcon } from "./Icons.jsx";
 import { fromDateTimeParts, padOrder, toDateInput, toTimeInput, useMediaUrls } from "../hooks.js";
 
 const DEFAULT_POINT = { lat: 37.5665, lng: 126.978 };
+
+const placeTitle = (result) => result.name || result.display_name?.split(",")[0]?.trim() || "선택한 위치";
 
 /**
  * Full-screen place capture. Field labels sit above their values as small
@@ -31,6 +33,10 @@ export default function PlaceEditor({
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [locationResults, setLocationResults] = useState([]);
+  const [locationSearching, setLocationSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const savedMedia = useMediaUrls(media);
   const [stagedUrls, setStagedUrls] = useState([]);
@@ -52,11 +58,66 @@ export default function PlaceEditor({
       setError("이 브라우저에서는 현재 위치를 쓸 수 없습니다.");
       return;
     }
+    setError("");
+    setLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => setPoint({ lat: position.coords.latitude, lng: position.coords.longitude }),
-      () => setError("현재 위치 권한을 확인해 주세요."),
+      (position) => {
+        setPoint({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocationResults([]);
+        setLocating(false);
+      },
+      () => {
+        setError("현재 위치 권한을 확인해 주세요.");
+        setLocating(false);
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const searchLocation = async () => {
+    const term = locationQuery.trim();
+    if (!term || locationSearching) return;
+    setError("");
+    setLocationSearching(true);
+    try {
+      const params = new URLSearchParams({
+        q: term,
+        format: "jsonv2",
+        addressdetails: "1",
+        limit: "5",
+        "accept-language": "ko",
+        countrycodes: "kr",
+      });
+
+      // 같은 이름의 동네가 전국에 여럿 있으므로 지금 핀 주변을 우선한다.
+      // bounded=0 이라 상자 밖 결과도 남되 순위만 밀린다.
+      if (Number.isFinite(point?.lat) && Number.isFinite(point?.lng)) {
+        const span = 0.45;
+        params.set(
+          "viewbox",
+          [point.lng - span, point.lat + span, point.lng + span, point.lat - span].join(",")
+        );
+        params.set("bounded", "0");
+      }
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+      if (!response.ok) throw new Error("검색 실패");
+      const results = await response.json();
+      setLocationResults(results);
+      if (!results.length) setError("검색 결과가 없습니다. 장소명을 조금 더 구체적으로 입력해 주세요.");
+    } catch {
+      setError("위치 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setLocationSearching(false);
+    }
+  };
+
+  const pickLocationResult = (result) => {
+    const lat = Number(result.lat);
+    const lng = Number(result.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setPoint({ lat, lng });
+    if (!name.trim()) setName(placeTitle(result));
+    setLocationResults([]);
   };
 
   const submit = async (event) => {
@@ -119,11 +180,39 @@ export default function PlaceEditor({
 
           <div className="field">
             <div className="field-note">
-              <span>위치 — 핀을 끌어 조정</span>
-              <button type="button" onClick={useCurrentLocation}>
-                <LocateIcon /> 현재 위치
+              <span>위치 — 검색하거나 핀을 끌어 조정</span>
+              <button type="button" onClick={useCurrentLocation} disabled={locating}>
+                <LocateIcon /> {locating ? "확인 중" : "내 위치"}
               </button>
             </div>
+            <div className="map-search">
+              <SearchIcon width={16} height={16} strokeWidth={1.7} />
+              <input
+                value={locationQuery}
+                onChange={(event) => setLocationQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    searchLocation();
+                  }
+                }}
+                placeholder="장소나 주소 검색"
+                aria-label="위치 검색"
+              />
+              <button type="button" onClick={searchLocation} disabled={!locationQuery.trim() || locationSearching}>
+                {locationSearching ? "검색 중" : "검색"}
+              </button>
+            </div>
+            {locationResults.length ? (
+              <div className="map-results">
+                {locationResults.map((result) => (
+                  <button key={result.place_id} type="button" onClick={() => pickLocationResult(result)}>
+                    <strong>{placeTitle(result)}</strong>
+                    <span>{result.display_name}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <PinPicker point={point} order={order} onChange={setPoint} />
           </div>
 

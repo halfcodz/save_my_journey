@@ -95,8 +95,20 @@ export default function ExploreView({ posts, savedIds, onToggleSave }) {
         ) : (
           <div className="empty">
             <span className="eyebrow">탐색</span>
-            <h2>{filter === SAVED ? "담아 둔 코스가 없어요." : "이 분류에는 코스가 없어요."}</h2>
-            <p>{filter === SAVED ? "마음에 드는 코스를 담기 해 보세요." : "다른 분류를 골라 보세요."}</p>
+            <h2>
+              {filter === SAVED
+                ? "담아 둔 코스가 없어요."
+                : posts.length
+                  ? "이 분류에는 코스가 없어요."
+                  : "아직 공개된 코스가 없어요."}
+            </h2>
+            <p>
+              {filter === SAVED
+                ? "마음에 드는 코스를 담기 해 보세요."
+                : posts.length
+                  ? "다른 분류를 골라 보세요."
+                  : "여행을 마친 뒤 ⋯ 메뉴에서 피드에 공개하면 여기에 올라옵니다."}
+            </p>
           </div>
         )}
       </div>

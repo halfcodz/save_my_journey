@@ -3,13 +3,13 @@ import { BookIcon, HomeIcon, PersonIcon, PlusIcon, SearchIcon } from "./Icons.js
 const items = [
   { id: "home", label: "홈", Icon: HomeIcon },
   { id: "explore", label: "탐색", Icon: SearchIcon },
-  { id: "trips", label: "내 여행", Icon: BookIcon },
+  { id: "trips", label: "여행 기록", Icon: BookIcon },
   { id: "profile", label: "프로필", Icon: PersonIcon },
 ];
 
 /**
  * The floating black pill. The centre slot is a raised action rather than a
- * destination, so it sits between 탐색 and 내 여행 exactly as the design shows.
+ * destination, so it sits between 탐색 and 여행 기록 exactly as the design shows.
  */
 export default function TabBar({ active, onNavigate, onAdd }) {
   const [home, explore, trips, profile] = items;

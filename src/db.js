@@ -279,74 +279,10 @@ export async function deleteMedia(mediaId) {
   await db.delete("media", mediaId);
 }
 
-const seedPosts = [
-  {
-    id: "seed-seoul-date-night",
-    authorId: "seed",
-    authorName: "민서",
-    title: "성수 저녁 데이트 코스",
-    area: "서울 성수",
-    category: "데이트코스",
-    duration: "4시간",
-    caption: "커피, 전시, 작은 바까지 걷기 좋은 동선으로 묶은 코스",
-    likes: 128,
-    saves: 41,
-    coverTone: "mint",
-    places: [
-      { order: 1, name: "서울숲 산책", memo: "해 지기 전 가볍게 걷기" },
-      { order: 2, name: "뚝섬 전시", memo: "예약 필요" },
-      { order: 3, name: "골목 와인바", memo: "마지막 대화 시간" },
-    ],
-    createdAt: "2026-08-21T10:00:00.000Z",
-    seeded: true,
-  },
-  {
-    id: "seed-busan-half-day",
-    authorId: "seed",
-    authorName: "준호",
-    title: "부산 반나절 바다 루트",
-    area: "부산 해운대",
-    category: "여행코스",
-    duration: "6시간",
-    caption: "초행이어도 헤매지 않는 바다 중심 코스",
-    likes: 96,
-    saves: 28,
-    coverTone: "blue",
-    places: [
-      { order: 1, name: "동백섬", memo: "오전 산책" },
-      { order: 2, name: "해운대 시장", memo: "점심" },
-      { order: 3, name: "청사포", memo: "노을" },
-    ],
-    createdAt: "2026-08-19T10:00:00.000Z",
-    seeded: true,
-  },
-  {
-    id: "seed-jeju-slow",
-    authorId: "seed",
-    authorName: "하린",
-    title: "제주 서쪽 느린 하루",
-    area: "제주 한림",
-    category: "여행코스",
-    duration: "1일",
-    caption: "사진을 많이 찍는 사람에게 맞춘 여유 있는 순서",
-    likes: 211,
-    saves: 73,
-    coverTone: "coral",
-    places: [
-      { order: 1, name: "협재 해변", memo: "아침 바다" },
-      { order: 2, name: "한림 카페", memo: "쉬는 시간" },
-      { order: 3, name: "금오름", memo: "해 질 때" },
-    ],
-    createdAt: "2026-08-17T10:00:00.000Z",
-    seeded: true,
-  },
-];
-
 export async function listFeedPosts() {
   const db = await dbPromise;
   const posts = await db.getAllFromIndex("feedPosts", "createdAt");
-  const ids = new Set(posts.map((post) => post.id));
-  return [...seedPosts.filter((post) => !ids.has(post.id)), ...posts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function publishTripToFeed({ trip, places, user }) {

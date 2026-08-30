@@ -2,7 +2,7 @@ import { useState } from "react";
 import { formatDateRange, formatDotDate } from "../hooks.js";
 
 /**
- * 내 여행 — the newest in-progress trip gets a full cover card, everything
+ * 여행 기록 — the newest in-progress trip gets a full cover card, everything
  * older collapses into 64px thumbnail rows.
  */
 export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onCreateTrip }) {
@@ -22,13 +22,33 @@ export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onC
   return (
     <section className="screen">
       <div className="screen-head">
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <h1 className="screen-title">내 여행</h1>
+        <div className="head-stack">
+          <h1 className="screen-title">여행 기록</h1>
           <span className="eyebrow">
             {stats.trips}개 여행 · {stats.places}개 핀
           </span>
         </div>
+        <button className="new-trip-mini" type="button" onClick={() => setCreating(true)} disabled={creating}>
+          ＋ 새 여행
+        </button>
       </div>
+
+      {creating ? (
+        <form className="inline-create" onSubmit={create}>
+          <label className="field underline">
+            <span>새 여행 이름</span>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 성수 한 바퀴" autoFocus />
+          </label>
+          <div className="inline-create-actions">
+            <button className="pill solid compact" type="submit">
+              만들기
+            </button>
+            <button className="link-underline" type="button" onClick={() => setCreating(false)}>
+              취소
+            </button>
+          </div>
+        </form>
+      ) : null}
 
       <div className="scroll with-tabs">
         {feature ? (
@@ -68,32 +88,11 @@ export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onC
 
         {!trips.length ? (
           <div className="empty">
-            <span className="eyebrow">내 여행</span>
+            <span className="eyebrow">여행 기록</span>
             <h2>첫 여행을 만들어 보세요.</h2>
             <p>여행을 만들면 방문한 장소를 순서대로 남길 수 있습니다.</p>
           </div>
         ) : null}
-
-        <div className="new-trip-cta">
-          {creating ? (
-            <form className="panel" onSubmit={create}>
-              <label className="field underline">
-                <span>새 여행 이름</span>
-                <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 성수 한 바퀴" autoFocus />
-              </label>
-              <button className="pill solid compact" type="submit">
-                만들기
-              </button>
-              <button className="link-underline" type="button" onClick={() => setCreating(false)}>
-                취소
-              </button>
-            </form>
-          ) : (
-            <button className="pill solid compact" type="button" onClick={() => setCreating(true)}>
-              ＋ 새 여행
-            </button>
-          )}
-        </div>
       </div>
     </section>
   );

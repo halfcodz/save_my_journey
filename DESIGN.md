@@ -12,7 +12,7 @@ The primary surface is a mobile-first operating app for recording a trip in the 
 
 ## Layout
 
-The app is a phone-width column. A floating black pill hovers over the content with five slots — 홈, 탐색, a raised white ＋ action, 내 여행, 프로필. Each tab owns exactly one idea and never repeats another: 홈 shows only the trip in progress, 내 여행 owns the full trip library, 탐색 owns other people's courses and the set saved from them. The trip detail is a full-bleed map with floating controls and a bottom sheet that can be pulled up over it. Place capture, reorder, and reels each take the full screen.
+The app is a phone-width column. A floating black pill hovers over the content with five slots — 홈, 탐색, a raised white ＋ action, 여행 기록, 프로필. 홈 is a readable personal archive overview with total counts, the latest trip, and recent stops. 여행 기록 owns the full trip library and creation flow. 탐색 owns published courses only; seeded example courses are omitted. The trip detail is a full-bleed map with floating controls, a route summary, and a bottom sheet that can be pulled up over it. Place capture, reorder, and reels each take the full screen.
 
 ## Components
 

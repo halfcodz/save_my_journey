@@ -24,7 +24,7 @@ export default function PinPicker({ point, order, onChange }) {
     const center = point ? [point.lat, point.lng] : DEFAULT_CENTER;
     const map = L.map(nodeRef.current, {
       zoomControl: false,
-      attributionControl: false,
+      attributionControl: true,
     }).setView(center, point ? 16 : 12);
 
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {

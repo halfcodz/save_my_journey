@@ -56,6 +56,7 @@ export default function App() {
 
   const [currentTripId, setCurrentTripId] = useState("");
   const [places, setPlaces] = useState([]);
+  const [placesByTrip, setPlacesByTrip] = useState({});
   const [mediaByPlace, setMediaByPlace] = useState({});
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
 
@@ -89,11 +90,15 @@ export default function App() {
       listFeedPosts(),
     ]);
     const nextStats = await getStats({ trips: nextTrips, placeCounts: counts });
+    const placeEntries = await Promise.all(
+      nextTrips.map(async (trip) => [trip.id, await getPlaces(trip.id).catch(() => [])])
+    );
 
     setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id] || 0 })));
     setCovers(nextCovers);
     setStats(nextStats);
     setPosts(nextPosts);
+    setPlacesByTrip(Object.fromEntries(placeEntries));
 
     setSavedIds(await listSavedPostIds(activeUser?.id));
 
@@ -191,6 +196,7 @@ export default function App() {
     setUser(null);
     setCurrentTripId("");
     setPlaces([]);
+    setPlacesByTrip({});
     setMediaByPlace({});
     setRoute({ name: "home" });
   };
@@ -371,16 +377,20 @@ export default function App() {
     <main className="phone">
       {route.name === "home" ? (
         isGuest ? (
-          guestWall("오늘의 코스")
+          guestWall("내 여행 기록")
         ) : (
           <HomeView
             activeTrip={activeTrip}
-            places={activeTrip && activeTrip.id === currentTripId ? places : []}
+            trips={trips}
+            stats={stats}
+            tripCoverUrls={tripCoverUrls}
+            placesByTrip={placesByTrip}
             mediaByPlace={mediaByPlace}
             mediaUrls={mediaUrls}
             onOpenPlace={(tripId, placeId) => {
               setCurrentTripId(tripId);
-              setRoute({ name: "place", placeId });
+              setSelectedPlaceId(placeId);
+              setRoute({ name: "trip", from: "home" });
             }}
             onOpenTrip={(tripId) => openTrip(tripId, "home")}
             onStartTrip={() => startTrip()}
@@ -394,7 +404,7 @@ export default function App() {
 
       {route.name === "trips" ? (
         isGuest ? (
-          guestWall("내 여행")
+          guestWall("여행 기록")
         ) : (
           <TripsView
             trips={trips}
@@ -467,9 +477,9 @@ export default function App() {
           <div className="empty">
             <span className="eyebrow">여행</span>
             <h2>선택한 여행이 없어요.</h2>
-            <p>내 여행에서 여행을 고르거나 새로 만들어 주세요.</p>
+            <p>여행 기록에서 여행을 고르거나 새로 만들어 주세요.</p>
             <button className="pill solid" type="button" onClick={() => setRoute({ name: "trips" })}>
-              내 여행으로
+              여행 기록으로
             </button>
           </div>
         </section>
