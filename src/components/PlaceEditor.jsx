@@ -1,20 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import PinPicker from "./PinPicker.jsx";
 import { CloseIcon, LocateIcon, PlayIcon, PlusIcon, SearchIcon } from "./Icons.jsx";
-import { formatDotDate, fromDateTimeParts, orderLabel, toDateInput, toTimeInput, useMediaUrls } from "../hooks.js";
+import { searchPlaces } from "../placeSearch.js";
+import { dayLabel, formatDotDate, fromDateTimeParts, toDateInput, toTimeInput, useMediaUrls } from "../hooks.js";
 
 const DEFAULT_POINT = { lat: 37.5665, lng: 126.978 };
 
-const placeTitle = (result) => result.name || result.display_name?.split(",")[0]?.trim() || "선택한 위치";
-
 /**
- * Full-screen place capture. Field labels sit above their values as small
- * letter-spaced eyebrows; the place name is the one field that carries the
- * heavy 1.5px black underline.
+ * One stop inside a day. The place name leads, then photos, then what it felt
+ * like; the day it belongs to is a chip row so several stops can share a day.
  */
 export default function PlaceEditor({
   place,
   nextOrder,
+  defaultDay = 1,
+  maxDay = 1,
   initialPoint,
   media = [],
   onCancel,
@@ -23,21 +23,21 @@ export default function PlaceEditor({
   onDeleteMedia,
 }) {
   const order = place?.order || nextOrder;
+  const [day, setDay] = useState(place?.day || defaultDay);
   const [name, setName] = useState(place?.name || "");
   const [date, setDate] = useState(toDateInput(place?.visitedAt));
   const [time, setTime] = useState(toTimeInput(place?.visitedAt));
   const [note, setNote] = useState(place?.note || "");
-  const [point, setPoint] = useState(
-    place ? { lat: place.lat, lng: place.lng } : initialPoint || DEFAULT_POINT
-  );
+  const [point, setPoint] = useState(place ? { lat: place.lat, lng: place.lng } : initialPoint || DEFAULT_POINT);
   const [files, setFiles] = useState([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [locationQuery, setLocationQuery] = useState("");
-  const [locationResults, setLocationResults] = useState([]);
-  const [locationSearching, setLocationSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
   const [locating, setLocating] = useState(false);
   const [editingTime, setEditingTime] = useState(false);
+  const searchAbort = useRef(null);
 
   const savedMedia = useMediaUrls(media);
   const [stagedUrls, setStagedUrls] = useState([]);
@@ -47,6 +47,10 @@ export default function PlaceEditor({
     setStagedUrls(next);
     return () => next.forEach((item) => URL.revokeObjectURL(item.url));
   }, [files]);
+
+  useEffect(() => () => searchAbort.current?.abort(), []);
+
+  const dayChoices = Array.from({ length: Math.max(maxDay, day) }, (_, i) => i + 1);
 
   const addFiles = (event) => {
     const picked = Array.from(event.target.files || []);
@@ -64,7 +68,7 @@ export default function PlaceEditor({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setPoint({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setLocationResults([]);
+        setResults([]);
         setLocating(false);
       },
       () => {
@@ -75,50 +79,31 @@ export default function PlaceEditor({
     );
   };
 
-  const searchLocation = async () => {
-    const term = locationQuery.trim();
-    if (!term || locationSearching) return;
-    setError("");
-    setLocationSearching(true);
-    try {
-      const params = new URLSearchParams({
-        q: term,
-        format: "jsonv2",
-        addressdetails: "1",
-        limit: "5",
-        "accept-language": "ko",
-        countrycodes: "kr",
-      });
+  const runSearch = async () => {
+    const term = query.trim();
+    if (!term || searching) return;
+    searchAbort.current?.abort();
+    const controller = new AbortController();
+    searchAbort.current = controller;
 
-      // 같은 이름의 동네가 전국에 여럿 있으므로 지금 핀 주변을 우선한다.
-      // bounded=0 이라 상자 밖 결과도 남되 순위만 밀린다.
-      if (Number.isFinite(point?.lat) && Number.isFinite(point?.lng)) {
-        const span = 0.45;
-        params.set(
-          "viewbox",
-          [point.lng - span, point.lat + span, point.lng + span, point.lat - span].join(",")
-        );
-        params.set("bounded", "0");
-      }
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
-      if (!response.ok) throw new Error("검색 실패");
-      const results = await response.json();
-      setLocationResults(results);
-      if (!results.length) setError("검색 결과가 없습니다. 장소명을 조금 더 구체적으로 입력해 주세요.");
+    setError("");
+    setSearching(true);
+    try {
+      const found = await searchPlaces(term, point, controller.signal);
+      if (controller.signal.aborted) return;
+      setResults(found);
+      if (!found.length) setError("검색 결과가 없습니다. 영문 상호나 근처 지명으로도 찾아보세요.");
     } catch {
-      setError("위치 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      if (!controller.signal.aborted) setError("위치 검색에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
-      setLocationSearching(false);
+      if (!controller.signal.aborted) setSearching(false);
     }
   };
 
-  const pickLocationResult = (result) => {
-    const lat = Number(result.lat);
-    const lng = Number(result.lon);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    setPoint({ lat, lng });
-    if (!name.trim()) setName(placeTitle(result));
-    setLocationResults([]);
+  const pickResult = (result) => {
+    setPoint({ lat: result.lat, lng: result.lng });
+    if (!name.trim()) setName(result.name);
+    setResults([]);
   };
 
   const submit = async (event) => {
@@ -135,7 +120,8 @@ export default function PlaceEditor({
         {
           id: place?.id,
           order,
-          name: name.trim() || `${orderLabel(order)} 기록`,
+          day,
+          name: name.trim() || `${dayLabel(day)} 기록`,
           note: note.trim(),
           visitedAt: fromDateTimeParts(date, time),
           lat: point.lat,
@@ -155,7 +141,7 @@ export default function PlaceEditor({
         <button type="button" className="cancel" onClick={onCancel}>
           취소
         </button>
-        <span className="title">{orderLabel(order)}</span>
+        <span className="title">{dayLabel(day)}</span>
         <span className="cancel spacer" aria-hidden="true">
           취소
         </span>
@@ -163,14 +149,34 @@ export default function PlaceEditor({
 
       <div className="scroll">
         <div className="editor">
+          <div className="field">
+            <span>며칠째인가요</span>
+            <div className="day-chips" role="group" aria-label="일차 선택">
+              {dayChoices.map((choice) => (
+                <button
+                  key={choice}
+                  type="button"
+                  className="chip"
+                  aria-pressed={day === choice}
+                  onClick={() => setDay(choice)}
+                >
+                  {dayLabel(choice)}
+                </button>
+              ))}
+              <button
+                type="button"
+                className="chip add"
+                onClick={() => setDay(dayChoices.length + 1)}
+                aria-label="다음 일차 추가"
+              >
+                ＋
+              </button>
+            </div>
+          </div>
+
           <label className="field hero">
             <span>어디였나요</span>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="예: 블루보틀 성수"
-              autoFocus
-            />
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="예: 블루보틀 성수" />
           </label>
 
           <div className="field">
@@ -186,7 +192,7 @@ export default function PlaceEditor({
                       </span>
                     </>
                   ) : (
-                    <img src={item.url} alt={item.name || "여행 사진"} />
+                    <img src={item.url} alt={item.name || "여행 사진"} loading="lazy" />
                   )}
                   {onDeleteMedia ? (
                     <button
@@ -254,36 +260,37 @@ export default function PlaceEditor({
             <div className="map-search" data-no-swipe>
               <SearchIcon width={16} height={16} />
               <input
-                value={locationQuery}
-                onChange={(event) => setLocationQuery(event.target.value)}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    searchLocation();
+                    runSearch();
                   }
                 }}
-                placeholder="장소나 주소 검색"
+                placeholder="카페, 식당, 주소 검색"
                 aria-label="위치 검색"
+                enterKeyHint="search"
               />
-              <button type="button" onClick={searchLocation} disabled={locationSearching}>
-                {locationSearching ? "검색 중" : "검색"}
+              <button type="button" onClick={runSearch} disabled={searching}>
+                {searching ? "검색 중" : "검색"}
               </button>
             </div>
 
-            {locationResults.length ? (
+            {results.length ? (
               <ul className="search-results">
-                {locationResults.map((result) => (
-                  <li key={`${result.place_id}`}>
-                    <button type="button" onClick={() => pickLocationResult(result)}>
-                      <strong>{placeTitle(result)}</strong>
-                      <span>{result.display_name}</span>
+                {results.map((result) => (
+                  <li key={result.id}>
+                    <button type="button" onClick={() => pickResult(result)}>
+                      <strong>{result.name}</strong>
+                      <span>{result.address}</span>
                     </button>
                   </li>
                 ))}
               </ul>
             ) : null}
 
-            <PinPicker point={point} order={orderLabel(order)} onChange={setPoint} />
+            <PinPicker point={point} order={String(order)} onChange={setPoint} />
 
             {editingTime ? (
               <div className="field-pair">
@@ -320,7 +327,7 @@ export default function PlaceEditor({
 
       <div className="editor-foot">
         <button className="pill solid" type="submit" disabled={saving}>
-          {orderLabel(order)}로 저장
+          {dayLabel(day)}에 저장
         </button>
       </div>
     </form>

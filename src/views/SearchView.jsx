@@ -1,14 +1,14 @@
 import { useState } from "react";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 import { SearchIcon } from "../components/Icons.jsx";
-import { orderLabel } from "../hooks.js";
+import { dayLabel } from "../hooks.js";
+import { tripKind } from "../tripKinds.js";
 
 /**
- * 검색 — other people's courses, found by typing. v3 drops the category chips
- * and the save button; a course card is a cover, a title, its route, and who
- * walked it.
+ * 검색 — courses people published. A card opens the course itself; when the
+ * course came from this device the real photos show, otherwise the route does.
  */
-export default function SearchView({ posts, onRefresh }) {
+export default function SearchView({ posts, postCoverUrls = {}, onOpenPost, onRefresh }) {
   const [query, setQuery] = useState("");
 
   const term = query.trim().toLowerCase();
@@ -31,6 +31,7 @@ export default function SearchView({ posts, onRefresh }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="연남동 데이트"
             aria-label="코스 검색"
+            enterKeyHint="search"
           />
         </label>
       </div>
@@ -41,27 +42,26 @@ export default function SearchView({ posts, onRefresh }) {
             {visible.map((post) => {
               const steps = post.places.slice(0, 3);
               const extra = post.places.length - steps.length;
+              const cover = postCoverUrls[post.id];
+              const days = Math.max(1, ...post.places.map((p) => p.day || 1));
 
               return (
-                <article key={post.id} className="course">
-                  <div className="mosaic" aria-hidden="true">
-                    <div className="thumb" />
-                    <div>
-                      <div className="thumb alt" />
-                      <div className="thumb" />
-                    </div>
-                  </div>
-                  <div className="course-copy">
-                    <h2>{post.title}</h2>
-                    <p className="course-steps">
-                      {steps.map((place) => `${orderLabel(place.order)} ${place.name}`).join(" · ")}
+                <button key={post.id} type="button" className="course" onClick={() => onOpenPost(post)}>
+                  <span className={`course-cover thumb${cover ? "" : " alt"}`}>
+                    {cover ? <img src={cover} alt="" loading="lazy" /> : <span className="ph">사진 없음</span>}
+                  </span>
+                  <span className="course-copy">
+                    <span className="course-title">{post.title}</span>
+                    <span className="course-steps">
+                      {steps.map((place) => `${dayLabel(place.day || 1)} ${place.name}`).join(" · ")}
                       {extra > 0 ? ` · +${extra}` : ""}
-                    </p>
-                    <p className="course-meta">
-                      {post.authorName} · {post.duration} · ♡ {post.likes || 0}
-                    </p>
-                  </div>
-                </article>
+                    </span>
+                    <span className="course-meta">
+                      <span className={`kind-tag kind-${post.kind || "travel"}`}>{tripKind(post.kind).short}</span>
+                      {post.authorName} · {days}일 · {post.places.length}곳
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </div>
@@ -72,7 +72,7 @@ export default function SearchView({ posts, onRefresh }) {
             <p>
               {term
                 ? "다른 말로 검색해 보세요."
-                : "여행을 마친 뒤 ⋯ 메뉴에서 공개하면 여기에 올라옵니다."}
+                : "코스를 길게 눌러 수정 화면에 들어간 뒤 ⋯ 메뉴에서 공개할 수 있어요."}
             </p>
           </div>
         )}

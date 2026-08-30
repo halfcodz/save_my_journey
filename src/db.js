@@ -161,11 +161,12 @@ export async function listTrips() {
   return trips.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export async function createTrip(title) {
+export async function createTrip(title, kind = "travel") {
   const timestamp = now();
   const trip = {
     id: uid(),
     title: title.trim() || `새 여행 ${new Date().toLocaleDateString("ko-KR")}`,
+    kind,
     status: "active",
     visibility: "private",
     createdAt: timestamp,
@@ -200,7 +201,8 @@ export async function deleteTrip(tripId) {
 export async function getPlaces(tripId) {
   const db = await dbPromise;
   const places = await db.getAllFromIndex("places", "tripId", tripId);
-  return places.sort((a, b) => a.order - b.order);
+  // day가 없던 시절의 기록은 1일차로 읽는다.
+  return places.map((place) => ({ ...place, day: place.day || 1 })).sort((a, b) => a.order - b.order);
 }
 
 export async function savePlace(placeInput, files = []) {
@@ -212,6 +214,7 @@ export async function savePlace(placeInput, files = []) {
     ...existing,
     ...placeInput,
     id: placeInput.id || uid(),
+    day: placeInput.day || existing?.day || 1,
     updatedAt: timestamp,
     createdAt: existing?.createdAt || timestamp,
   };
@@ -293,6 +296,7 @@ export async function publishTripToFeed({ trip, places, user }) {
     authorName: user.name,
     title: trip.title,
     area: places[0]?.name || "내 여행",
+    kind: trip.kind || "travel",
     category: "여행코스",
     duration: `${Math.max(places.length, 1)}곳`,
     caption: places.map((place) => place.name).join(" · ") || "아직 장소가 적은 코스",
@@ -301,6 +305,7 @@ export async function publishTripToFeed({ trip, places, user }) {
     coverTone: "mint",
     places: places.map((place) => ({
       order: place.order,
+      day: place.day || 1,
       name: place.name,
       memo: place.note,
     })),
@@ -402,11 +407,13 @@ export async function exportBackup({ includeMedia = true } = {}) {
   };
 }
 
-export async function getPlaceCounts() {
+export async function getTripCounts() {
   const db = await dbPromise;
   const places = await db.getAll("places");
   return places.reduce((acc, place) => {
-    acc[place.tripId] = (acc[place.tripId] || 0) + 1;
+    const entry = (acc[place.tripId] ||= { places: 0, days: 0 });
+    entry.places += 1;
+    entry.days = Math.max(entry.days, place.day || 1);
     return acc;
   }, {});
 }

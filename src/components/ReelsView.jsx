@@ -1,37 +1,47 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "./Icons.jsx";
-import { formatClock, orderLabel, useMediaUrls, useThemeColor } from "../hooks.js";
+import { dayLabel, formatClock, useMediaUrls, useThemeColor } from "../hooks.js";
 
 /**
- * 코스 보기 — one full-height slide per stop, swiped vertically. The photo
- * fills the frame and the feeling written at that stop sits over the gradient.
+ * 코스 보기 — every photo of the course, one per screen, in visit order. The
+ * day and the place ride along the top so you always know where you are.
  */
-export default function ReelsView({ trip, places, mediaByPlace, startIndex = 0, onClose }) {
+export default function ReelsView({ trip, places, mediaByPlace, startPlaceId, onClose }) {
   const trackRef = useRef(null);
-  const [active, setActive] = useState(startIndex);
+  const [active, setActive] = useState(0);
 
-  useThemeColor("#000000"); // 재생 화면은 전체가 검정이므로 상태바까지 맞춘다
+  useThemeColor("#000000");
 
-  const allMedia = useMemo(
-    () => places.flatMap((place) => mediaByPlace[place.id] || []),
+  // 장소마다 사진이 여러 장이므로 사진 한 장이 한 화면이다.
+  const slides = useMemo(
+    () =>
+      places.flatMap((place) => {
+        const media = mediaByPlace[place.id] || [];
+        if (!media.length) return [{ key: `${place.id}-empty`, place, media: null }];
+        return media.map((item) => ({ key: item.id, place, media: item }));
+      }),
     [places, mediaByPlace]
   );
+
+  const allMedia = useMemo(() => slides.filter((s) => s.media).map((s) => s.media), [slides]);
   const mediaUrls = useMediaUrls(allMedia);
-  const urlById = useMemo(
-    () => Object.fromEntries(mediaUrls.map((item) => [item.id, item.url])),
-    [mediaUrls]
-  );
+  const urlById = useMemo(() => Object.fromEntries(mediaUrls.map((item) => [item.id, item.url])), [mediaUrls]);
+
+  const startIndex = useMemo(() => {
+    const found = slides.findIndex((slide) => slide.place.id === startPlaceId);
+    return found > 0 ? found : 0;
+  }, [slides, startPlaceId]);
 
   useEffect(() => {
     const track = trackRef.current;
     if (!track || !startIndex) return;
     track.scrollTo({ top: startIndex * track.clientHeight, behavior: "auto" });
+    setActive(startIndex);
   }, [startIndex]);
 
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return undefined;
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -40,10 +50,9 @@ export default function ReelsView({ trip, places, mediaByPlace, startIndex = 0, 
       },
       { root: track, threshold: 0.6 }
     );
-
     track.querySelectorAll("[data-index]").forEach((node) => observer.observe(node));
     return () => observer.disconnect();
-  }, [places.length]);
+  }, [slides.length]);
 
   useEffect(() => {
     const onKey = (event) => {
@@ -53,16 +62,21 @@ export default function ReelsView({ trip, places, mediaByPlace, startIndex = 0, 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  const current = slides[active];
+
   return (
     <section className="reels" aria-label={`${trip.title} 코스 보기`}>
       <div className="reels-top">
         <div className="reels-progress" aria-hidden="true">
-          {places.map((place, index) => (
-            <i key={place.id} className={index <= active ? "on" : ""} />
+          {slides.map((slide, index) => (
+            <i key={slide.key} className={index <= active ? "on" : ""} />
           ))}
         </div>
         <div className="reels-head">
-          <span className="eyebrow">{trip.title}</span>
+          <span className="eyebrow">
+            {trip.title}
+            {current ? ` · ${dayLabel(current.place.day)}` : ""}
+          </span>
           <button type="button" onClick={onClose} aria-label="닫기">
             <CloseIcon />
           </button>
@@ -70,37 +84,49 @@ export default function ReelsView({ trip, places, mediaByPlace, startIndex = 0, 
       </div>
 
       <div className="reels-track" ref={trackRef}>
-        {places.map((place, index) => {
-          const media = mediaByPlace[place.id] || [];
-          const cover = media.find((item) => item.type === "image") || media[0];
-          const next = places[index + 1];
+        {slides.map((slide, index) => {
+          const { place, media } = slide;
+          const next = slides[index + 1];
+          const isNewPlace = !next || next.place.id !== place.id;
 
           return (
-            <article key={place.id} className="reel" data-index={index}>
+            <article key={slide.key} className="reel" data-index={index}>
               <div className="reel-media">
-                {cover && urlById[cover.id] ? (
-                  cover.type === "video" ? (
-                    <video src={urlById[cover.id]} controls playsInline preload="metadata" />
+                {media && urlById[media.id] ? (
+                  media.type === "video" ? (
+                    <video src={urlById[media.id]} controls playsInline preload="metadata" />
                   ) : (
-                    <img src={urlById[cover.id]} alt={cover.name || place.name} />
+                    <img src={urlById[media.id]} alt={media.name || place.name} />
                   )
                 ) : (
-                  <div className="ph">PHOTO — {place.name}</div>
+                  <div className="ph">사진 없음 — {place.name}</div>
                 )}
               </div>
               <div className="reel-scrim" aria-hidden="true" />
 
               <div className="reel-copy">
                 <span className="eyebrow">
-                  {orderLabel(place.order)} · {formatClock(place.visitedAt)}
+                  {dayLabel(place.day)} · {formatClock(place.visitedAt)}
                 </span>
                 <h2>{place.name}</h2>
                 {place.note ? <p>{place.note}</p> : null}
-                {next ? <p className="reel-hint">위로 밀어 {orderLabel(next.order)}</p> : null}
+                {next ? (
+                  <p className="reel-hint">
+                    {isNewPlace ? `위로 밀어 ${next.place.name}` : "위로 밀어 다음 사진"}
+                  </p>
+                ) : null}
               </div>
             </article>
           );
         })}
+
+        {!slides.length ? (
+          <article className="reel">
+            <div className="reel-media">
+              <div className="ph">아직 기록한 곳이 없습니다</div>
+            </div>
+          </article>
+        ) : null}
       </div>
     </section>
   );

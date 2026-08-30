@@ -196,6 +196,7 @@ export async function publishTripToFeed({ trip, places, user }) {
     authorName: user.name,
     title: trip.title,
     area: places[0]?.name || "내 여행",
+    kind: trip.kind || "travel",
     category: "여행코스",
     duration: `${Math.max(places.length, 1)}곳`,
     caption: places.map((place) => place.name).join(" · ") || "아직 장소가 적은 코스",
@@ -203,6 +204,7 @@ export async function publishTripToFeed({ trip, places, user }) {
     coverTone: "mint",
     places: places.map((place) => ({
       order: place.order,
+      day: place.day || 1,
       name: place.name,
       memo: place.note,
     })),
@@ -225,9 +227,14 @@ export async function changePassword({ currentPassword, nextPassword }) {
   return { id: current.uid, name: current.displayName || "여행자", email: current.email };
 }
 
-export async function getPlaceCounts() {
+export async function getTripCounts() {
   requireFirebase();
   const trips = await listTrips();
-  const entries = await Promise.all(trips.map(async (trip) => [trip.id, (await getPlaces(trip.id)).length]));
+  const entries = await Promise.all(
+    trips.map(async (trip) => {
+      const places = await getPlaces(trip.id);
+      return [trip.id, { places: places.length, days: places.reduce((m, p) => Math.max(m, p.day || 1), 0) }];
+    })
+  );
   return Object.fromEntries(entries);
 }

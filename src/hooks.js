@@ -123,8 +123,24 @@ export function formatLongDate(value = new Date()) {
   return new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "long" }).format(new Date(value));
 }
 
-/** `1차` — v3 counts visits as rounds rather than zero-padded indexes. */
-export const orderLabel = (order) => `${order ?? 0}차`;
+/** `1일차` — a trip is counted in days, and each day holds several places. */
+export const dayLabel = (day) => `${day || 1}일차`;
+
+/** Places grouped into `[{ day, places }]`, ascending, ready to render. */
+export function groupByDay(places = []) {
+  const byDay = new Map();
+  places.forEach((place) => {
+    const day = place.day || 1;
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(place);
+  });
+  return [...byDay.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([day, items]) => ({ day, places: items.sort((a, b) => a.order - b.order) }));
+}
+
+/** The day a new place should default to — the last one recorded. */
+export const lastDay = (places = []) => places.reduce((max, p) => Math.max(max, p.day || 1), 1);
 
 /** `2026.06.11 – 06.14` when a trip spans days, otherwise a single date. */
 export function formatDateRange(startValue, endValue) {

@@ -9,7 +9,6 @@ export default function ProfileView({
   user,
   stats,
   settings,
-  install,
   onToggleSetting,
   onExport,
   onChangePassword,
@@ -36,12 +35,6 @@ export default function ProfileView({
       setBusy(false);
     }
   };
-
-  const installNote = install.installed
-    ? "설치됨"
-    : install.canInstall
-      ? null
-      : "브라우저 메뉴에서 추가";
 
   return (
     <section className="screen">
@@ -72,17 +65,6 @@ export default function ProfileView({
         </div>
 
         <div className="settings">
-          <div className="setting">
-            <span>홈 화면에 앱 추가</span>
-            {installNote ? (
-              <span className="note">{installNote}</span>
-            ) : (
-              <button type="button" className="action" onClick={install.promptInstall}>
-                설치
-              </button>
-            )}
-          </div>
-
           <div className="setting">
             <div className="setting-copy">
               <span>피드에 코스 공개</span>

@@ -48,8 +48,8 @@ export async function listTrips() {
   return (await backend()).listTrips();
 }
 
-export async function createTrip(title) {
-  return (await backend()).createTrip(title);
+export async function createTrip(title, kind) {
+  return (await backend()).createTrip(title, kind);
 }
 
 export async function updateTrip(trip) {
@@ -109,13 +109,13 @@ export const exportBackup = localData.exportBackup;
  * Media never leaves the device, so photo counts are always local. Trip and pin
  * counts follow whichever backend actually owns the trips.
  */
-export async function getPlaceCounts() {
-  if (!usesFirebaseBackend) return localData.getPlaceCounts();
+export async function getTripCounts() {
+  if (!usesFirebaseBackend) return localData.getTripCounts();
   const firebaseData = await getFirebaseBackend();
-  return firebaseData.getPlaceCounts();
+  return firebaseData.getTripCounts();
 }
 
-export async function getStats({ trips, placeCounts } = {}) {
+export async function getStats({ trips, tripCounts } = {}) {
   const localStats = await localData.getStats();
   if (!usesFirebaseBackend) return localStats;
 
@@ -123,7 +123,7 @@ export async function getStats({ trips, placeCounts } = {}) {
   // not read the same Firestore documents twice.
   const [nextTrips, counts] = await Promise.all([
     trips ?? listTrips(),
-    placeCounts ?? getPlaceCounts(),
+    tripCounts ?? getTripCounts(),
   ]);
   return {
     ...localStats,

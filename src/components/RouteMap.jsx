@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { orderLabel } from "../hooks.js";
+import { tripKind } from "../tripKinds.js";
 import L from "leaflet";
 
 const DEFAULT_CENTER = [37.5665, 126.978];
@@ -77,7 +77,7 @@ async function fetchOsrmRoute(profile, places, signal) {
  * The trip route: numbered pins joined by a road-following line. `bottomPadding`
  * keeps the fitted bounds clear of the place sheet that overlaps the map.
  */
-export default function RouteMap({ places, selectedPlaceId, onSelectPlace, onPickPoint, bottomPadding = 150 }) {
+export default function RouteMap({ places, kind, selectedPlaceId, onSelectPlace, onPickPoint, bottomPadding = 150 }) {
   const nodeRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
@@ -163,15 +163,23 @@ export default function RouteMap({ places, selectedPlaceId, onSelectPlace, onPic
     const routePoints = routeInfo?.coords?.length ? routeInfo.coords : points;
 
     if (routePoints.length > 1) {
+      const style = tripKind(kind);
       L.polyline(routePoints, { color: "#fff", weight: 8, opacity: 0.88, lineCap: "round", lineJoin: "round" }).addTo(layer);
-      L.polyline(routePoints, { color: "#000", weight: 3.6, opacity: 0.96, lineCap: "round", lineJoin: "round" }).addTo(layer);
+      L.polyline(routePoints, {
+        color: "#000",
+        weight: style.weight,
+        opacity: 0.96,
+        lineCap: "round",
+        lineJoin: "round",
+        dashArray: style.dash,
+      }).addTo(layer);
     }
 
     places.forEach((place) => {
       const marker = L.marker([place.lat, place.lng], {
-        icon: numberPin(orderLabel(place.order), place.id === selectedPlaceId),
+        icon: numberPin(String(place.order), place.id === selectedPlaceId),
         keyboard: true,
-        alt: `${orderLabel(place.order)} ${place.name}`,
+        alt: `${place.order}번 ${place.name}`,
       });
       marker.on("click", () => selectRef.current?.(place.id));
       marker.addTo(layer);
@@ -188,7 +196,7 @@ export default function RouteMap({ places, selectedPlaceId, onSelectPlace, onPic
       maxZoom: 16,
       animate: false,
     });
-  }, [places, selectedPlaceId, bottomPadding, routeInfo]);
+  }, [places, kind, selectedPlaceId, bottomPadding, routeInfo]);
 
   useEffect(() => {
     const map = mapRef.current;

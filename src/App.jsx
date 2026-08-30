@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import {
   changePassword,
   createTrip,
@@ -7,7 +7,7 @@ import {
   deleteTrip,
   exportBackup,
   getMediaForTrip,
-  getPlaceCounts,
+  getTripCounts,
   getPlaces,
   getSessionUser,
   getSettings,
@@ -22,7 +22,6 @@ import {
   signOut,
   updateTrip,
 } from "./data.js";
-import PlaceEditor from "./components/PlaceEditor.jsx";
 import ReelsView from "./components/ReelsView.jsx";
 import ReorderScreen from "./components/ReorderScreen.jsx";
 import TabBar, { TABS } from "./components/TabBar.jsx";
@@ -30,10 +29,12 @@ import TabPager from "./components/TabPager.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
 import AuthView from "./views/AuthView.jsx";
 import RecordsView from "./views/RecordsView.jsx";
+
+const PlaceEditor = lazy(() => import("./components/PlaceEditor.jsx"));
+const TripDetailView = lazy(() => import("./views/TripDetailView.jsx"));
 import ProfileView from "./views/ProfileView.jsx";
-import TripDetailView from "./views/TripDetailView.jsx";
 import SearchView from "./views/SearchView.jsx";
-import { useBlobUrlMap, useInstallPrompt } from "./hooks.js";
+import { useBlobUrlMap, lastDay } from "./hooks.js";
 
 const SESSION_MARK = "smj-browser-session";
 const TAB_ROUTES = TABS.map((tab) => tab.id);
@@ -60,7 +61,6 @@ export default function App({ updateReady = false, onApplyUpdate }) {
   const [route, setRoute] = useState({ name: "records" });
   const [notice, setNotice] = useState("");
 
-  const install = useInstallPrompt();
   const isGuest = Boolean(user?.guest);
 
   const currentTrip = trips.find((trip) => trip.id === currentTripId) || null;
@@ -76,17 +76,27 @@ export default function App({ updateReady = false, onApplyUpdate }) {
   const mediaUrls = useBlobUrlMap(mediaRecords);
   const tripCoverUrls = useBlobUrlMap(covers);
 
+  const postCovers = useMemo(() => {
+    const map = {};
+    posts.forEach((post) => {
+      const cover = post.sourceTripId && covers[post.sourceTripId];
+      if (cover) map[post.id] = cover;
+    });
+    return map;
+  }, [posts, covers]);
+  const postCoverUrls = useBlobUrlMap(postCovers);
+
   /* --- loading ----------------------------------------------------------- */
 
   const loadLibrary = useCallback(async (activeUser) => {
     const [nextTrips, counts, nextCovers, nextPosts] = await Promise.all([
       listTrips(),
-      getPlaceCounts(),
+      getTripCounts(),
       getTripCovers(),
       listFeedPosts(),
     ]);
-    const nextStats = await getStats({ trips: nextTrips, placeCounts: counts });
-    setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id] || 0 })));
+    const nextStats = await getStats({ trips: nextTrips, tripCounts: counts });
+    setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id]?.places || 0, dayCount: counts[trip.id]?.days || 0 })));
     setCovers(nextCovers);
     setStats(nextStats);
     setPosts(nextPosts);
@@ -203,8 +213,17 @@ export default function App({ updateReady = false, onApplyUpdate }) {
     setRoute({ name: "trip", from });
   };
 
-  const startTrip = async (title) => {
-    const trip = await createTrip(title || todayTitle());
+  const startTrip = async (title, kind = "travel", existingId) => {
+    if (existingId) {
+      const target = trips.find((item) => item.id === existingId);
+      if (target) {
+        await updateTrip({ ...target, title: title.trim() || target.title, kind });
+        await loadLibrary(user);
+        setNotice("코스를 수정했습니다.");
+      }
+      return null;
+    }
+    const trip = await createTrip(title || todayTitle(), kind);
     await loadLibrary(user);
     setCurrentTripId(trip.id);
     setSelectedPlaceId("");
@@ -284,15 +303,16 @@ export default function App({ updateReady = false, onApplyUpdate }) {
     setNotice(status === "complete" ? "여행을 완료로 표시했습니다." : "다시 기록 중으로 바꿨습니다.");
   };
 
-  const removeTrip = async () => {
-    if (!currentTrip) return;
-    if (!confirm("이 여행과 모든 장소·미디어를 삭제할까요?")) return;
-    await deleteTrip(currentTrip.id);
+  const removeTrip = async (tripId = currentTripId) => {
+    const target = trips.find((trip) => trip.id === tripId);
+    if (!target) return;
+    if (!confirm(`‘${target.title}’과 모든 기록·사진을 삭제할까요?`)) return;
+    await deleteTrip(target.id);
     const remaining = await loadLibrary(user);
-    const next = remaining.find((trip) => trip.id !== currentTrip.id);
+    const next = remaining.find((trip) => trip.id !== target.id);
     setCurrentTripId(next?.id || "");
     setRoute({ name: "records" });
-    setNotice("여행을 삭제했습니다.");
+    setNotice("코스를 삭제했습니다.");
   };
 
   const toggleSetting = async (key) => {
@@ -327,8 +347,8 @@ export default function App({ updateReady = false, onApplyUpdate }) {
         trip={currentTrip}
         places={places}
         mediaByPlace={mediaByPlace}
-        startIndex={Math.max(0, places.findIndex((place) => place.id === selectedPlaceId))}
-        onClose={() => setRoute({ name: "trip" })}
+        startPlaceId={selectedPlaceId}
+        onClose={() => setRoute({ name: route.from || "trip" })}
       />
     );
   }
@@ -371,12 +391,32 @@ export default function App({ updateReady = false, onApplyUpdate }) {
                 <RecordsView
                   trips={trips}
                   tripCoverUrls={tripCoverUrls}
-                  onOpenTrip={openTrip}
+                  onPlayTrip={(tripId) => {
+                    setCurrentTripId(tripId);
+                    setSelectedPlaceId("");
+                    setRoute({ name: "reels", from: "records" });
+                  }}
+                  onEditTrip={(tripId) => openTrip(tripId, "records")}
+                  onDeleteTrip={removeTrip}
                   onCreateTrip={startTrip}
                   onRefresh={refreshFromPull}
                 />
               ),
-              <SearchView posts={posts} onRefresh={refreshFromPull} />,
+              <SearchView
+                posts={posts}
+                postCoverUrls={postCoverUrls}
+                onOpenPost={(post) => {
+                  const local = trips.find((trip) => trip.id === post.sourceTripId);
+                  if (local) {
+                    setCurrentTripId(local.id);
+                    setSelectedPlaceId("");
+                    setRoute({ name: "reels", from: "search" });
+                    return;
+                  }
+                  setNotice("이 코스의 사진은 올린 사람의 기기에만 있습니다.");
+                }}
+                onRefresh={refreshFromPull}
+              />,
               isGuest ? (
                 guestWall("프로필")
               ) : (
@@ -384,8 +424,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
                   user={user}
                   stats={stats}
                   settings={settings}
-                  install={install}
-                  onToggleSetting={toggleSetting}
+                      onToggleSetting={toggleSetting}
                   onExport={runExport}
                   onChangePassword={runChangePassword}
                   onSignOut={handleSignOut}
@@ -399,8 +438,10 @@ export default function App({ updateReady = false, onApplyUpdate }) {
       ) : null}
 
       {route.name === "trip" && currentTrip ? (
+        <Suspense fallback={<div className="loading-screen">지도를 여는 중</div>}>
         <TripDetailView
           trip={currentTrip}
+          kind={currentTrip.kind}
           places={places}
           mediaByPlace={mediaByPlace}
           mediaUrls={mediaUrls}
@@ -415,13 +456,17 @@ export default function App({ updateReady = false, onApplyUpdate }) {
           onOpenReels={() => setRoute({ name: "reels" })}
           onDeleteTrip={removeTrip}
         />
+        </Suspense>
       ) : null}
 
       {route.name === "place" ? (
+        <Suspense fallback={<div className="loading-screen">기록 화면을 여는 중</div>}>
         <PlaceEditor
           key={route.placeId || "new"}
           place={editingPlace}
           nextOrder={places.length + 1}
+          defaultDay={lastDay(places)}
+          maxDay={lastDay(places)}
           initialPoint={
             places.length ? { lat: places[places.length - 1].lat, lng: places[places.length - 1].lng } : null
           }
@@ -431,6 +476,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
           onDelete={handleDeletePlace}
           onDeleteMedia={handleDeleteMedia}
         />
+        </Suspense>
       ) : null}
 
       {route.name === "reorder" ? (

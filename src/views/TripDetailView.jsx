@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import RouteMap from "../components/RouteMap.jsx";
 import { BackIcon, GripIcon } from "../components/Icons.jsx";
-import { describeMedia, formatClock, orderLabel } from "../hooks.js";
+import { dayLabel, describeMedia, formatClock, groupByDay } from "../hooks.js";
 
 /**
  * The map screen. Route fills the frame, controls float on top of it, and the
@@ -82,58 +82,67 @@ export default function TripDetailView({
         />
 
         <div className="sheet-body">
-          {places.map((place) => {
-            const media = mediaByPlace[place.id] || [];
-            const cover = media.find((item) => item.type === "image") || media[0];
-            const summary = describeMedia(media);
-            const isActive = place.id === selectedPlaceId;
+          {groupByDay(places).map(({ day, places: dayPlaces }) => (
+            <section className="day-group" key={day}>
+              <h2 className="day-head">
+                {dayLabel(day)}
+                <span>{dayPlaces.length}곳</span>
+              </h2>
 
-            return (
-              <button
-                key={place.id}
-                type="button"
-                className="stop"
-                aria-current={isActive}
-                onClick={() => (isActive ? onEditPlace(place.id) : onSelectPlace(place.id))}
-              >
-                <span className="stop-order">{orderLabel(place.order)}</span>
-                <span className={`stop-thumb thumb${cover ? "" : " alt"}`}>
-                  {cover && mediaUrls[cover.id] ? <img src={mediaUrls[cover.id]} alt="" /> : null}
-                </span>
-                <span className="stop-copy">
-                  <strong>{place.name}</strong>
-                  <span>{[formatClock(place.visitedAt), summary].filter(Boolean).join(" · ")}</span>
-                </span>
-                {isActive ? (
-                  <span className="stop-mark">
-                    <span className="stop-edit">수정</span>
-                    <span className="stop-dot" />
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+              {dayPlaces.map((place) => {
+                const media = mediaByPlace[place.id] || [];
+                const cover = media.find((item) => item.type === "image") || media[0];
+                const summary = describeMedia(media);
+                const isActive = place.id === selectedPlaceId;
+
+                return (
+                  <button
+                    key={place.id}
+                    type="button"
+                    className="stop"
+                    aria-current={isActive}
+                    onClick={() => (isActive ? onEditPlace(place.id) : onSelectPlace(place.id))}
+                  >
+                    <span className="stop-order">{place.order}</span>
+                    <span className={`stop-thumb thumb${cover ? "" : " alt"}`}>
+                      {cover && mediaUrls[cover.id] ? <img src={mediaUrls[cover.id]} alt="" loading="lazy" /> : null}
+                    </span>
+                    <span className="stop-copy">
+                      <strong>{place.name}</strong>
+                      <span>{[formatClock(place.visitedAt), summary].filter(Boolean).join(" · ")}</span>
+                    </span>
+                    {isActive ? (
+                      <span className="stop-mark">
+                        <span className="stop-edit">수정</span>
+                        <span className="stop-dot" />
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </section>
+          ))}
 
           {!places.length ? (
             <p className="sheet-empty">
-              아직 기록한 곳이 없습니다. 지도를 탭하거나 아래 버튼으로 1차를 남겨 보세요.
+              아직 기록한 곳이 없습니다. 지도를 탭하거나 아래 버튼으로 1일차를 시작해 보세요.
             </p>
           ) : null}
+        </div>
 
-          <div className="sheet-foot">
-            <button className="pill solid compact grow" type="button" onClick={() => onAddPlace()}>
-              ＋ {orderLabel(places.length + 1)} 기록
-            </button>
-            <button
-              type="button"
-              className="circle-btn"
-              onClick={onReorder}
-              disabled={places.length < 2}
-              aria-label="순서 변경"
-            >
-              <GripIcon width={18} height={18} />
-            </button>
-          </div>
+        <div className="sheet-foot">
+          <button className="pill solid compact grow" type="button" onClick={() => onAddPlace()}>
+            ＋ 장소 기록
+          </button>
+          <button
+            type="button"
+            className="circle-btn"
+            onClick={onReorder}
+            disabled={places.length < 2}
+            aria-label="순서 변경"
+          >
+            <GripIcon width={18} height={18} />
+          </button>
         </div>
       </div>
 
