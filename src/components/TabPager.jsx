@@ -15,6 +15,7 @@ const EDGE_RESISTANCE = 0.32; // 양 끝에서 고무줄처럼 저항
 export default function TabPager({ index, count, onIndexChange, children }) {
   const frameRef = useRef(null);
   const gestureRef = useRef(null);
+  const suppressClickRef = useRef(false);
   const [drag, setDrag] = useState(0);
   const [animating, setAnimating] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
@@ -33,6 +34,7 @@ export default function TabPager({ index, count, onIndexChange, children }) {
   const onPointerDown = (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (event.target.closest("[data-no-swipe]")) return;
+    suppressClickRef.current = false;
     gestureRef.current = {
       id: event.pointerId,
       startX: event.clientX,
@@ -77,6 +79,11 @@ export default function TabPager({ index, count, onIndexChange, children }) {
     if (!g || g.axis !== "x" || event.pointerId !== g.id) return;
 
     const dx = event.clientX - g.startX;
+
+    // 드래그가 끝나면 브라우저는 손가락 아래 요소로 click을 마저 보낸다.
+    // 그대로 두면 스와이프가 카드나 버튼을 눌러 버린다.
+    if (Math.abs(dx) > AXIS_LOCK_SLOP) suppressClickRef.current = true;
+
     const passedDistance = Math.abs(dx) > width() * SWIPE_DISTANCE_RATIO;
     const passedFlick = Math.abs(g.velocity) > SWIPE_VELOCITY;
     const direction = dx < 0 ? 1 : -1;
@@ -103,6 +110,12 @@ export default function TabPager({ index, count, onIndexChange, children }) {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onClickCapture={(event) => {
+        if (!suppressClickRef.current) return;
+        suppressClickRef.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
     >
       <div
         className={`pager-track${animating && !reducedMotion ? " is-settling" : ""}`}

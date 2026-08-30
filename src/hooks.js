@@ -165,3 +165,17 @@ export function describeMedia(items = []) {
   if (videos) parts.push(`영상 ${videos}`);
   return parts.join(" · ");
 }
+
+/**
+ * Paints the browser/OS chrome — the iOS status bar and Dynamic Island area in
+ * a home-screen install — to match whatever screen is on top.
+ */
+export function useThemeColor(color) {
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return undefined;
+    const previous = meta.getAttribute("content");
+    meta.setAttribute("content", color);
+    return () => meta.setAttribute("content", previous);
+  }, [color]);
+}

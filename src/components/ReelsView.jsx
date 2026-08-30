@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "./Icons.jsx";
-import { formatClock, orderLabel, useMediaUrls } from "../hooks.js";
+import { formatClock, orderLabel, useMediaUrls, useThemeColor } from "../hooks.js";
 
 /**
  * 코스 보기 — one full-height slide per stop, swiped vertically. The photo
@@ -9,6 +9,8 @@ import { formatClock, orderLabel, useMediaUrls } from "../hooks.js";
 export default function ReelsView({ trip, places, mediaByPlace, startIndex = 0, onClose }) {
   const trackRef = useRef(null);
   const [active, setActive] = useState(startIndex);
+
+  useThemeColor("#000000"); // 재생 화면은 전체가 검정이므로 상태바까지 맞춘다
 
   const allMedia = useMemo(
     () => places.flatMap((place) => mediaByPlace[place.id] || []),
