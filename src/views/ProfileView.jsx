@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import PullToRefresh from "../components/PullToRefresh.jsx";
 
 /**
@@ -16,11 +17,14 @@ export default function ProfileView({
   onRefresh,
   avatarUrl,
   onPickAvatar,
+  onClearAvatar,
 }) {
   const [panel, setPanel] = useState("");
   const [passwords, setPasswords] = useState({ current: "", next: "" });
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [avatarMenu, setAvatarMenu] = useState(false);
+  const fileRef = useRef(null);
 
   const submitPassword = async (event) => {
     event.preventDefault();
@@ -42,28 +46,32 @@ export default function ProfileView({
     <section className="screen">
       <PullToRefresh className="scroll with-tabs" onRefresh={onRefresh}>
         <div className="profile-head">
-          <label className="avatar-pick">
+          <button
+            type="button"
+            className="avatar-pick"
+            onClick={() => setAvatarMenu(true)}
+            aria-label="프로필 사진 바꾸기"
+          >
             <span className="avatar">
               {avatarUrl ? <img src={avatarUrl} alt="" /> : user.name.slice(0, 1)}
             </span>
             <span className="avatar-edit" aria-hidden="true">
               변경
             </span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                if (file) onPickAvatar(file);
-              }}
-            />
-            <span className="sr-only">프로필 사진 바꾸기</span>
-          </label>
-          <div>
-            <h1>{user.name}</h1>
-            <span>{user.email}</span>
-          </div>
+          </button>
+          <h1>{user.name}</h1>
+          <span className="profile-email">{user.email}</span>
+          <input
+            ref={fileRef}
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) onPickAvatar(file);
+            }}
+          />
         </div>
 
         <div className="stat-row single">
@@ -140,6 +148,41 @@ export default function ProfileView({
           </button>
         </div>
       </PullToRefresh>
+
+      {avatarMenu
+        ? createPortal(
+            <>
+              <div className="scrim" onClick={() => setAvatarMenu(false)} role="presentation" />
+              <div className="menu" role="dialog" aria-label="프로필 사진">
+                <div className="menu-grip" aria-hidden="true" />
+                <p className="menu-title">프로필 사진</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarMenu(false);
+                    fileRef.current?.click();
+                  }}
+                >
+                  갤러리에서 선택
+                </button>
+                <button
+                  type="button"
+                  disabled={!avatarUrl}
+                  onClick={() => {
+                    setAvatarMenu(false);
+                    onClearAvatar();
+                  }}
+                >
+                  기본 프로필 사용
+                </button>
+                <button type="button" className="quiet" onClick={() => setAvatarMenu(false)}>
+                  닫기
+                </button>
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </section>
   );
 }

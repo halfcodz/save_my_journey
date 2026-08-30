@@ -21,6 +21,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   const [drag, setDrag] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
+  const [mapPlaceId, setMapPlaceId] = useState("");
   const frameRef = useRef(null);
   const gestureRef = useRef(null);
 
@@ -136,7 +137,10 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
 
     if (g.axis === "y") {
       const dy = event.clientY - g.y;
-      if (dy < -MAP_PULL * 0.6) setMapOpen(true);
+      if (dy < -MAP_PULL * 0.6) {
+        setMapPlaceId(frame?.place.id || "");
+        setMapOpen(true);
+      }
       setDrag(0);
       return;
     }
@@ -252,11 +256,13 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
             <RouteMap
               places={current.places}
               kind={trip.kind}
-              selectedPlaceId={frame?.place.id}
-              onSelectPlace={() => {}}
-              bottomPadding={120}
+              selectedPlaceId={mapPlaceId || frame?.place.id}
+              onSelectPlace={setMapPlaceId}
+              topPadding={190}
+              bottomPadding={230}
             />
           </Suspense>
+
           <div className="course-map-bar">
             <span className="float-title">
               {dayLabel(current.day)} · {current.places.length}곳
@@ -264,6 +270,28 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
             <button type="button" className="float-btn" onClick={() => setMapOpen(false)} aria-label="지도 닫기">
               <CloseIcon />
             </button>
+          </div>
+
+          {/* 핀이 겹쳐도 순서를 읽을 수 있도록 목록을 함께 둔다. */}
+          <div className="course-map-list">
+            <div className="course-map-grip" aria-hidden="true" />
+            <ul>
+              {current.places.map((place) => (
+                <li key={place.id}>
+                  <button
+                    type="button"
+                    aria-current={(mapPlaceId || frame?.place.id) === place.id}
+                    onClick={() => setMapPlaceId(place.id)}
+                  >
+                    <span className="stop-order">{place.order}</span>
+                    <span className="stop-copy">
+                      <strong>{place.name}</strong>
+                      <span>{formatClock(place.visitedAt)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       ) : null}

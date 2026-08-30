@@ -21,6 +21,7 @@ import {
   saveSettings,
   saveAvatar,
   getAvatar,
+  clearAvatar,
   signOut,
   updateTrip,
 } from "./data.js";
@@ -440,6 +441,11 @@ export default function App({ updateReady = false, onApplyUpdate }) {
                     await saveAvatar(file);
                     setAvatar(file);
                     setNotice("프로필 사진을 바꿨습니다.");
+                  }}
+                  onClearAvatar={async () => {
+                    await clearAvatar();
+                    setAvatar(null);
+                    setNotice("기본 프로필로 되돌렸습니다.");
                   }}
                 />
               ),

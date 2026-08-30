@@ -77,7 +77,7 @@ async function fetchOsrmRoute(profile, places, signal) {
  * The trip route: numbered pins joined by a road-following line. `bottomPadding`
  * keeps the fitted bounds clear of the place sheet that overlaps the map.
  */
-export default function RouteMap({ places, kind, selectedPlaceId, onSelectPlace, onPickPoint, bottomPadding = 150 }) {
+export default function RouteMap({ places, kind, selectedPlaceId, onSelectPlace, onPickPoint, topPadding = 150, bottomPadding = 150 }) {
   const nodeRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
@@ -191,12 +191,12 @@ export default function RouteMap({ places, kind, selectedPlaceId, onSelectPlace,
       return;
     }
     map.fitBounds(points, {
-      paddingTopLeft: [48, 96],
+      paddingTopLeft: [48, topPadding],
       paddingBottomRight: [48, bottomPadding],
       maxZoom: 16,
       animate: false,
     });
-  }, [places, kind, selectedPlaceId, bottomPadding, routeInfo]);
+  }, [places, kind, selectedPlaceId, topPadding, bottomPadding, routeInfo]);
 
   useEffect(() => {
     const map = mapRef.current;
