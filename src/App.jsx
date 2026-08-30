@@ -19,10 +19,12 @@ import {
   reorderPlaces,
   savePlace,
   saveSettings,
+  saveAvatar,
+  getAvatar,
   signOut,
   updateTrip,
 } from "./data.js";
-import ReelsView from "./components/ReelsView.jsx";
+const CourseView = lazy(() => import("./components/CourseView.jsx"));
 import ReorderScreen from "./components/ReorderScreen.jsx";
 import TabBar, { TABS } from "./components/TabBar.jsx";
 import TabPager from "./components/TabPager.jsx";
@@ -60,6 +62,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
 
   const [route, setRoute] = useState({ name: "records" });
   const [notice, setNotice] = useState("");
+  const [avatar, setAvatar] = useState(null);
 
   const isGuest = Boolean(user?.guest);
 
@@ -75,6 +78,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
 
   const mediaUrls = useBlobUrlMap(mediaRecords);
   const tripCoverUrls = useBlobUrlMap(covers);
+  const avatarUrls = useBlobUrlMap(useMemo(() => (avatar ? { me: { id: "avatar", blob: avatar } } : {}), [avatar]));
 
   const postCovers = useMemo(() => {
     const map = {};
@@ -141,6 +145,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
       }
 
       setUser(sessionUser);
+      setAvatar(await getAvatar().catch(() => null));
       setReady(true);
     })();
   }, []);
@@ -343,13 +348,14 @@ export default function App({ updateReady = false, onApplyUpdate }) {
 
   if (route.name === "reels" && currentTrip) {
     return (
-      <ReelsView
-        trip={currentTrip}
-        places={places}
-        mediaByPlace={mediaByPlace}
-        startPlaceId={selectedPlaceId}
-        onClose={() => setRoute({ name: route.from || "trip" })}
-      />
+      <Suspense fallback={<div className="loading-screen">코스를 여는 중</div>}>
+        <CourseView
+          trip={currentTrip}
+          places={places}
+          mediaByDay={mediaByPlace}
+          onClose={() => setRoute({ name: route.from || "records" })}
+        />
+      </Suspense>
     );
   }
 
@@ -429,6 +435,12 @@ export default function App({ updateReady = false, onApplyUpdate }) {
                   onChangePassword={runChangePassword}
                   onSignOut={handleSignOut}
                   onRefresh={refreshFromPull}
+                  avatarUrl={avatarUrls.me}
+                  onPickAvatar={async (file) => {
+                    await saveAvatar(file);
+                    setAvatar(file);
+                    setNotice("프로필 사진을 바꿨습니다.");
+                  }}
                 />
               ),
             ]}

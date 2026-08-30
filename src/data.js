@@ -104,6 +104,9 @@ export const getTripCovers = localData.getTripCovers;
 export const getSettings = localData.getSettings;
 export const saveSettings = localData.saveSettings;
 export const exportBackup = localData.exportBackup;
+export const saveAvatar = localData.saveAvatar;
+export const getAvatar = localData.getAvatar;
+export const clearAvatar = localData.clearAvatar;
 
 /**
  * Media never leaves the device, so photo counts are always local. Trip and pin

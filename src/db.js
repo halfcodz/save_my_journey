@@ -417,3 +417,22 @@ export async function getTripCounts() {
     return acc;
   }, {});
 }
+
+/* --- profile photo ---------------------------------------------------------- */
+
+export async function saveAvatar(file) {
+  const db = await dbPromise;
+  await db.put("settings", { id: "avatar", blob: file, updatedAt: now() });
+  return file;
+}
+
+export async function getAvatar() {
+  const db = await dbPromise;
+  const record = await db.get("settings", "avatar");
+  return record?.blob || null;
+}
+
+export async function clearAvatar() {
+  const db = await dbPromise;
+  await db.delete("settings", "avatar");
+}

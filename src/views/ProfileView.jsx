@@ -14,6 +14,8 @@ export default function ProfileView({
   onChangePassword,
   onSignOut,
   onRefresh,
+  avatarUrl,
+  onPickAvatar,
 }) {
   const [panel, setPanel] = useState("");
   const [passwords, setPasswords] = useState({ current: "", next: "" });
@@ -40,27 +42,34 @@ export default function ProfileView({
     <section className="screen">
       <PullToRefresh className="scroll with-tabs" onRefresh={onRefresh}>
         <div className="profile-head">
-          <span className="avatar" aria-hidden="true">
-            {user.name.slice(0, 1)}
-          </span>
+          <label className="avatar-pick">
+            <span className="avatar">
+              {avatarUrl ? <img src={avatarUrl} alt="" /> : user.name.slice(0, 1)}
+            </span>
+            <span className="avatar-edit" aria-hidden="true">
+              변경
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) onPickAvatar(file);
+              }}
+            />
+            <span className="sr-only">프로필 사진 바꾸기</span>
+          </label>
           <div>
             <h1>{user.name}</h1>
             <span>{user.email}</span>
           </div>
         </div>
 
-        <div className="stat-row">
+        <div className="stat-row single">
           <div>
             <strong>{stats.trips}</strong>
             <span>여행</span>
-          </div>
-          <div>
-            <strong>{stats.places}</strong>
-            <span>핀</span>
-          </div>
-          <div>
-            <strong>{stats.photos}</strong>
-            <span>사진</span>
           </div>
         </div>
 
