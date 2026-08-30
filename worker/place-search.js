@@ -62,10 +62,12 @@ export default {
     });
 
     if (!upstream.ok) {
-      return new Response(JSON.stringify({ error: "upstream failed", status: upstream.status }), {
-        status: 502,
-        headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
-      });
+      // 카카오가 왜 거절했는지 그대로 넘겨 진단할 수 있게 한다. 키는 포함되지 않는다.
+      const detail = await upstream.text().catch(() => "");
+      return new Response(
+        JSON.stringify({ error: "upstream failed", status: upstream.status, detail: detail.slice(0, 300) }),
+        { status: 502, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } }
+      );
     }
 
     const data = await upstream.json();
