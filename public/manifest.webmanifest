@@ -1,0 +1,19 @@
+{
+  "name": "Save My Journey",
+  "short_name": "Journey",
+  "description": "Local-first travel records with map pins, media, and reels.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

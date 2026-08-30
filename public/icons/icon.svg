@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Save My Journey icon">
+  <rect width="512" height="512" rx="112" fill="#f7f3ea"/>
+  <path d="M112 136c60-34 111 30 176-2 45-22 79-16 112 10v232c-44-34-77-28-122-6-62 31-114-33-166 0V136Z" fill="#2f6f5e"/>
+  <path d="M112 136c52-30 104 33 166 2v232c-62 31-114-33-166 0V136Z" fill="#f06f5f"/>
+  <circle cx="260" cy="244" r="62" fill="#f7f3ea"/>
+  <circle cx="260" cy="244" r="24" fill="#26322e"/>
+  <path d="M260 160v-44M260 392v-44M176 244h-44M388 244h-44" stroke="#26322e" stroke-width="24" stroke-linecap="round"/>
+</svg>

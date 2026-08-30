@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Local-first travel journal with map pins and trip reels." />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <link rel="icon" href="%BASE_URL%icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="%BASE_URL%icons/icon.svg" />
+    <title>Save My Journey</title>
+    <script>
+      (function () {
+        var localStatic =
+          (location.hostname === "localhost" || location.hostname === "127.0.0.1") &&
+          location.port &&
+          location.port !== "5173" &&
+          location.port !== "4173" &&
+          !location.pathname.includes("/dist/");
+
+        if (localStatic) {
+          location.replace(new URL("dist/index.html", location.href).toString());
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <!--
+      THESIS: A trip is a pocket field log where map pins, visit order, and media stay on one working surface; it refuses a marketing-style landing page.
+      OWN-WORLD: Pure black on white. Colour is removed entirely — emphasis comes from weight, scale, and space, with a floating black tab pill as the only heavy chrome.
+      STORY: The user starts a trip, drops numbered pins while moving, reorders the route by dragging, then replays it as full-bleed vertical media.
+      FIRST VIEWPORT: Mobile fills with the date, 오늘의 코스, and the in-progress trip as a time rail; the floating tab pill keeps ＋ always reachable.
+      FORM: Design canvas 2A — 흑백 · 미니멀, 플로팅 탭.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+    -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
