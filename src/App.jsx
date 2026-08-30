@@ -142,7 +142,14 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user || isGuest) return;
+    if (!user) return;
+
+    // 둘러보기는 남의 코스를 보러 들어온 흐름이므로 피드는 반드시 채운다.
+    if (isGuest) {
+      listFeedPosts().then(setPosts).catch(() => setPosts([]));
+      return;
+    }
+
     loadLibrary(user).then((nextTrips) => {
       setCurrentTripId((current) => {
         if (current && nextTrips.some((trip) => trip.id === current)) return current;
