@@ -1,0 +1,3 @@
+name = "save-my-journey-search"
+main = "place-search.js"
+compatibility_date = "2026-01-01"
