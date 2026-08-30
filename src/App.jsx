@@ -27,6 +27,7 @@ import ReelsView from "./components/ReelsView.jsx";
 import ReorderScreen from "./components/ReorderScreen.jsx";
 import TabBar, { TABS } from "./components/TabBar.jsx";
 import TabPager from "./components/TabPager.jsx";
+import UpdateBanner from "./components/UpdateBanner.jsx";
 import AuthView from "./views/AuthView.jsx";
 import RecordsView from "./views/RecordsView.jsx";
 import ProfileView from "./views/ProfileView.jsx";
@@ -40,7 +41,7 @@ const GUEST = { id: "guest", name: "게스트", email: "로그인하면 기록�
 
 const todayTitle = () => `${new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date())} 코스`;
 
-export default function App() {
+export default function App({ updateReady = false, onApplyUpdate }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
   const [settings, setSettings] = useState({ feedPublic: false, autoLogin: true });
@@ -170,6 +171,14 @@ export default function App() {
     },
     [loadLibrary, loadTripDetail, user, currentTripId]
   );
+
+  const refreshFromPull = useCallback(async () => {
+    if (isGuest) {
+      await listFeedPosts().then(setPosts).catch(() => {});
+      return;
+    }
+    await refreshAll(currentTripId);
+  }, [isGuest, refreshAll, currentTripId]);
 
   const onAuthed = async (nextUser, autoLogin) => {
     sessionStorage.setItem(SESSION_MARK, "1");
@@ -364,9 +373,10 @@ export default function App() {
                   tripCoverUrls={tripCoverUrls}
                   onOpenTrip={openTrip}
                   onCreateTrip={startTrip}
+                  onRefresh={refreshFromPull}
                 />
               ),
-              <SearchView posts={posts} />,
+              <SearchView posts={posts} onRefresh={refreshFromPull} />,
               isGuest ? (
                 guestWall("프로필")
               ) : (
@@ -379,6 +389,7 @@ export default function App() {
                   onExport={runExport}
                   onChangePassword={runChangePassword}
                   onSignOut={handleSignOut}
+                  onRefresh={refreshFromPull}
                 />
               ),
             ]}
@@ -438,6 +449,8 @@ export default function App() {
           </div>
         </section>
       ) : null}
+
+      {updateReady ? <UpdateBanner onReload={onApplyUpdate} /> : null}
 
       {notice ? (
         <button className="notice" type="button" onClick={() => setNotice("")}>

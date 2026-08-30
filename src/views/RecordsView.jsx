@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 import { AddButton } from "../components/TabBar.jsx";
 import { formatDotDate } from "../hooks.js";
 
@@ -6,7 +7,7 @@ import { formatDotDate } from "../hooks.js";
  * 나만의 여행 코스 — the trip library. The trip still being recorded takes a
  * full cover card; everything finished collapses to a thumbnail row.
  */
-export default function RecordsView({ trips, tripCoverUrls, onOpenTrip, onCreateTrip }) {
+export default function RecordsView({ trips, tripCoverUrls, onOpenTrip, onCreateTrip, onRefresh }) {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
 
@@ -26,7 +27,7 @@ export default function RecordsView({ trips, tripCoverUrls, onOpenTrip, onCreate
         <h1 className="screen-title">나만의 여행 코스</h1>
       </div>
 
-      <div className="scroll with-tabs">
+      <PullToRefresh className="scroll with-tabs" onRefresh={onRefresh}>
         {creating ? (
           <form className="panel" onSubmit={create} data-no-swipe>
             <label className="field underline">
@@ -91,7 +92,7 @@ export default function RecordsView({ trips, tripCoverUrls, onOpenTrip, onCreate
             <p>＋ 를 누르면 여행을 만들고 다녀온 곳을 차례로 남길 수 있습니다.</p>
           </div>
         ) : null}
-      </div>
+      </PullToRefresh>
 
       {!creating ? <AddButton onClick={() => setCreating(true)} label="새 여행 만들기" /> : null}
     </section>

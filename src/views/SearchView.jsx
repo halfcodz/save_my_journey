@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 import { SearchIcon } from "../components/Icons.jsx";
 import { orderLabel } from "../hooks.js";
 
@@ -7,7 +8,7 @@ import { orderLabel } from "../hooks.js";
  * and the save button; a course card is a cover, a title, its route, and who
  * walked it.
  */
-export default function SearchView({ posts }) {
+export default function SearchView({ posts, onRefresh }) {
   const [query, setQuery] = useState("");
 
   const term = query.trim().toLowerCase();
@@ -34,7 +35,7 @@ export default function SearchView({ posts }) {
         </label>
       </div>
 
-      <div className="scroll with-tabs">
+      <PullToRefresh className="scroll with-tabs" onRefresh={onRefresh}>
         {visible.length ? (
           <div className="course-stack">
             {visible.map((post) => {
@@ -75,7 +76,7 @@ export default function SearchView({ posts }) {
             </p>
           </div>
         )}
-      </div>
+      </PullToRefresh>
     </section>
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import PullToRefresh from "../components/PullToRefresh.jsx";
 
 /**
  * 프로필 / 설정. Numbers first, then a plain list of switches and links — no
@@ -13,6 +14,7 @@ export default function ProfileView({
   onExport,
   onChangePassword,
   onSignOut,
+  onRefresh,
 }) {
   const [panel, setPanel] = useState("");
   const [passwords, setPasswords] = useState({ current: "", next: "" });
@@ -43,7 +45,7 @@ export default function ProfileView({
 
   return (
     <section className="screen">
-      <div className="scroll with-tabs">
+      <PullToRefresh className="scroll with-tabs" onRefresh={onRefresh}>
         <div className="profile-head">
           <span className="avatar" aria-hidden="true">
             {user.name.slice(0, 1)}
@@ -146,7 +148,7 @@ export default function ProfileView({
             <span>로그아웃</span>
           </button>
         </div>
-      </div>
+      </PullToRefresh>
     </section>
   );
 }

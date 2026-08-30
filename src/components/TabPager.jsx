@@ -100,7 +100,8 @@ export default function TabPager({ index, count, onIndexChange, children }) {
     setAnimating(true);
   }, [index]);
 
-  const offset = `calc(${-index * 100}% + ${drag}px)`;
+  // %는 트랙 자신의 폭(화면 count장) 기준이므로 한 장은 100/count%다.
+  const offset = `calc(${(-index * 100) / count}% + ${drag}px)`;
 
   return (
     <div
