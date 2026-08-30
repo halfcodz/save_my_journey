@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import RouteMap from "../components/RouteMap.jsx";
-import { BackIcon } from "../components/Icons.jsx";
-import { describeMedia, formatClock, padOrder } from "../hooks.js";
+import { BackIcon, GripIcon } from "../components/Icons.jsx";
+import { describeMedia, formatClock, orderLabel } from "../hooks.js";
 
 /**
  * The map screen. Route fills the frame, controls float on top of it, and the
@@ -28,7 +28,7 @@ export default function TripDetailView({
   const dragRef = useRef(null);
 
   const startGrip = (event) => {
-    dragRef.current = { y: event.clientY, expanded };
+    dragRef.current = { y: event.clientY };
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
@@ -62,7 +62,7 @@ export default function TripDetailView({
         </button>
         <span className="float-title">{trip.title}</span>
         <button type="button" className="float-btn" onClick={() => setMenuOpen(true)} aria-label="여행 메뉴">
-          <span style={{ fontSize: 15, letterSpacing: "0.05em", lineHeight: 1 }} aria-hidden="true">
+          <span className="dots" aria-hidden="true">
             ⋯
           </span>
         </button>
@@ -81,13 +81,6 @@ export default function TripDetailView({
           }}
         />
 
-        <div className="sheet-head">
-          <h2>방문 순서 {places.length}곳</h2>
-          <button type="button" onClick={onReorder} disabled={places.length < 2}>
-            순서 변경
-          </button>
-        </div>
-
         <div className="sheet-body">
           {places.map((place) => {
             const media = mediaByPlace[place.id] || [];
@@ -103,7 +96,7 @@ export default function TripDetailView({
                 aria-current={isActive}
                 onClick={() => (isActive ? onEditPlace(place.id) : onSelectPlace(place.id))}
               >
-                <span className="stop-order">{padOrder(place.order)}</span>
+                <span className="stop-order">{orderLabel(place.order)}</span>
                 <span className={`stop-thumb thumb${cover ? "" : " alt"}`}>
                   {cover && mediaUrls[cover.id] ? <img src={mediaUrls[cover.id]} alt="" /> : null}
                 </span>
@@ -122,14 +115,23 @@ export default function TripDetailView({
           })}
 
           {!places.length ? (
-            <p className="course-steps" style={{ padding: "18px 0" }}>
-              아직 장소가 없습니다. 지도를 탭하거나 아래 버튼으로 첫 장소를 남겨 보세요.
+            <p className="sheet-empty">
+              아직 기록한 곳이 없습니다. 지도를 탭하거나 아래 버튼으로 1차를 남겨 보세요.
             </p>
           ) : null}
 
           <div className="sheet-foot">
-            <button className="pill solid compact" type="button" onClick={() => onAddPlace()} style={{ width: "100%" }}>
-              ＋ 장소 추가
+            <button className="pill solid compact grow" type="button" onClick={() => onAddPlace()}>
+              ＋ {orderLabel(places.length + 1)} 기록
+            </button>
+            <button
+              type="button"
+              className="circle-btn"
+              onClick={onReorder}
+              disabled={places.length < 2}
+              aria-label="순서 변경"
+            >
+              <GripIcon width={18} height={18} />
             </button>
           </div>
         </div>
@@ -141,13 +143,13 @@ export default function TripDetailView({
           <div className="menu" role="dialog" aria-label="여행 메뉴">
             <div className="menu-grip" aria-hidden="true" />
             <button type="button" onClick={act(onOpenReels)} disabled={!places.length}>
-              릴스로 돌아보기
+              코스 보기
             </button>
             <button type="button" onClick={act(onComplete)}>
-              {trip.status === "complete" ? "다시 기록 중으로" : "여행 완료로 표시"}
+              {trip.status === "complete" ? "다시 기록 중으로" : "기록 완료로 표시"}
             </button>
             <button type="button" onClick={act(onPublish)} disabled={!places.length}>
-              피드에 코스 공개
+              검색에 코스 공개
             </button>
             <button type="button" className="quiet" onClick={act(onDeleteTrip)}>
               여행 삭제

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import PinPicker from "./PinPicker.jsx";
 import { CloseIcon, LocateIcon, PlayIcon, PlusIcon, SearchIcon } from "./Icons.jsx";
-import { fromDateTimeParts, padOrder, toDateInput, toTimeInput, useMediaUrls } from "../hooks.js";
+import { formatDotDate, fromDateTimeParts, orderLabel, toDateInput, toTimeInput, useMediaUrls } from "../hooks.js";
 
 const DEFAULT_POINT = { lat: 37.5665, lng: 126.978 };
 
@@ -37,6 +37,7 @@ export default function PlaceEditor({
   const [locationResults, setLocationResults] = useState([]);
   const [locationSearching, setLocationSearching] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [editingTime, setEditingTime] = useState(false);
 
   const savedMedia = useMediaUrls(media);
   const [stagedUrls, setStagedUrls] = useState([]);
@@ -134,7 +135,7 @@ export default function PlaceEditor({
         {
           id: place?.id,
           order,
-          name: name.trim() || `장소 ${order}`,
+          name: name.trim() || `${orderLabel(order)} 기록`,
           note: note.trim(),
           visitedAt: fromDateTimeParts(date, time),
           lat: point.lat,
@@ -154,80 +155,26 @@ export default function PlaceEditor({
         <button type="button" className="cancel" onClick={onCancel}>
           취소
         </button>
-        <span className="title">{padOrder(order)}번째 장소</span>
-        <button type="submit" className="confirm" disabled={saving}>
-          저장
-        </button>
+        <span className="title">{orderLabel(order)}</span>
+        <span className="cancel spacer" aria-hidden="true">
+          취소
+        </span>
       </div>
 
       <div className="scroll">
         <div className="editor">
           <label className="field hero">
-            <span>장소명</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="예: 블루보틀 성수" autoFocus />
-          </label>
-
-          <div className="field-pair">
-            <label className="field underline">
-              <span>날짜</span>
-              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-            </label>
-            <label className="field underline">
-              <span>시간</span>
-              <input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
-            </label>
-          </div>
-
-          <div className="field">
-            <div className="field-note">
-              <span>위치 — 검색하거나 핀을 끌어 조정</span>
-              <button type="button" onClick={useCurrentLocation} disabled={locating}>
-                <LocateIcon /> {locating ? "확인 중" : "내 위치"}
-              </button>
-            </div>
-            <div className="map-search">
-              <SearchIcon width={16} height={16} strokeWidth={1.7} />
-              <input
-                value={locationQuery}
-                onChange={(event) => setLocationQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    searchLocation();
-                  }
-                }}
-                placeholder="장소나 주소 검색"
-                aria-label="위치 검색"
-              />
-              <button type="button" onClick={searchLocation} disabled={!locationQuery.trim() || locationSearching}>
-                {locationSearching ? "검색 중" : "검색"}
-              </button>
-            </div>
-            {locationResults.length ? (
-              <div className="map-results">
-                {locationResults.map((result) => (
-                  <button key={result.place_id} type="button" onClick={() => pickLocationResult(result)}>
-                    <strong>{placeTitle(result)}</strong>
-                    <span>{result.display_name}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <PinPicker point={point} order={order} onChange={setPoint} />
-          </div>
-
-          <label className="field">
-            <span>메모</span>
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="그 장소에서 남기고 싶은 기억"
-              rows={3}
+            <span>어디였나요</span>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="예: 블루보틀 성수"
+              autoFocus
             />
           </label>
 
           <div className="field">
-            <span>사진 · 동영상</span>
+            <span>사진</span>
             <div className="media-grid">
               {savedMedia.map((item) => (
                 <figure key={item.id} className="media-tile">
@@ -278,21 +225,103 @@ export default function PlaceEditor({
               ))}
 
               <label className="media-add">
-                <PlusIcon width={16} height={16} />
+                <PlusIcon width={18} height={18} />
                 <span className="sr-only">사진 또는 동영상 추가</span>
                 <input type="file" accept="image/*,video/*" multiple onChange={addFiles} />
               </label>
             </div>
           </div>
 
+          <label className="field">
+            <span>그때의 감정</span>
+            <textarea
+              className="feeling"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="그 자리에서 느낀 것을 그대로 남겨 보세요."
+              rows={3}
+            />
+          </label>
+
+          <div className="field">
+            <div className="field-note">
+              <span>위치 · 시간</span>
+              <button type="button" onClick={useCurrentLocation} disabled={locating}>
+                <LocateIcon /> {locating ? "확인 중" : "내 위치"}
+              </button>
+            </div>
+
+            <div className="map-search" data-no-swipe>
+              <SearchIcon width={16} height={16} />
+              <input
+                value={locationQuery}
+                onChange={(event) => setLocationQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    searchLocation();
+                  }
+                }}
+                placeholder="장소나 주소 검색"
+                aria-label="위치 검색"
+              />
+              <button type="button" onClick={searchLocation} disabled={locationSearching}>
+                {locationSearching ? "검색 중" : "검색"}
+              </button>
+            </div>
+
+            {locationResults.length ? (
+              <ul className="search-results">
+                {locationResults.map((result) => (
+                  <li key={`${result.place_id}`}>
+                    <button type="button" onClick={() => pickLocationResult(result)}>
+                      <strong>{placeTitle(result)}</strong>
+                      <span>{result.display_name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
+            <PinPicker point={point} order={orderLabel(order)} onChange={setPoint} />
+
+            {editingTime ? (
+              <div className="field-pair">
+                <label className="field underline">
+                  <span>날짜</span>
+                  <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+                </label>
+                <label className="field underline">
+                  <span>시간</span>
+                  <input type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+                </label>
+              </div>
+            ) : (
+              <div className="when-row">
+                <span>
+                  {formatDotDate(fromDateTimeParts(date, time))} {time}
+                </span>
+                <button type="button" className="link-underline" onClick={() => setEditingTime(true)}>
+                  수정
+                </button>
+              </div>
+            )}
+          </div>
+
           {error ? <p className="form-error">{error}</p> : null}
 
           {place && onDelete ? (
             <button type="button" className="danger-link" onClick={() => onDelete(place.id)}>
-              이 장소 삭제
+              이 기록 삭제
             </button>
           ) : null}
         </div>
+      </div>
+
+      <div className="editor-foot">
+        <button className="pill solid" type="submit" disabled={saving}>
+          {orderLabel(order)}로 저장
+        </button>
       </div>
     </form>
   );

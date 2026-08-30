@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { GripIcon } from "./Icons.jsx";
-import { formatClock, padOrder } from "../hooks.js";
+import { formatClock, orderLabel } from "../hooks.js";
 
 /**
  * Drag-to-reorder. The row being moved lifts out of the flow as a black card
@@ -108,9 +108,9 @@ export default function ReorderScreen({ places, onCancel, onDone }) {
                 className="reorder-row"
                 tabIndex={0}
                 onKeyDown={onRowKeyDown(index)}
-                aria-label={`${index + 1}번 ${place.name}. 위아래 화살표로 순서를 바꿉니다.`}
+                aria-label={`${orderLabel(index + 1)} ${place.name}. 위아래 화살표로 순서를 바꿉니다.`}
               >
-                <span className="num">{padOrder(index + 1)}</span>
+                <span className="num">{orderLabel(index + 1)}</span>
                 <span className="name">{place.name}</span>
                 <span className="time">{formatClock(place.visitedAt)}</span>
                 <button
@@ -133,7 +133,7 @@ export default function ReorderScreen({ places, onCancel, onDone }) {
           style={{ position: "fixed", top: drag.top, left: drag.left, width: drag.width, pointerEvents: "none" }}
           aria-hidden="true"
         >
-          <span className="num">{padOrder(drag.index + 1)}</span>
+          <span className="num">{orderLabel(drag.index + 1)}</span>
           <span className="name">{list[drag.index]?.name}</span>
           <span className="time">{formatClock(list[drag.index]?.visitedAt)}</span>
           <span className="grip">

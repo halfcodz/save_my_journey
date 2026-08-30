@@ -123,8 +123,8 @@ export function formatLongDate(value = new Date()) {
   return new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "long" }).format(new Date(value));
 }
 
-/** `01` — order badges are always two digits in this design. */
-export const padOrder = (order) => String(order ?? 0).padStart(2, "0");
+/** `1차` — v3 counts visits as rounds rather than zero-padded indexes. */
+export const orderLabel = (order) => `${order ?? 0}차`;
 
 /** `2026.06.11 – 06.14` when a trip spans days, otherwise a single date. */
 export function formatDateRange(startValue, endValue) {

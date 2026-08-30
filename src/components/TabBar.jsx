@@ -1,45 +1,42 @@
-import { BookIcon, HomeIcon, PersonIcon, PlusIcon, SearchIcon } from "./Icons.jsx";
+import { BookIcon, PersonIcon, PlusIcon, SearchIcon } from "./Icons.jsx";
 
-const items = [
-  { id: "home", label: "홈", Icon: HomeIcon },
-  { id: "explore", label: "탐색", Icon: SearchIcon },
-  { id: "trips", label: "여행 기록", Icon: BookIcon },
+export const TABS = [
+  { id: "records", label: "나만의 여행 코스", Icon: BookIcon },
+  { id: "search", label: "검색", Icon: SearchIcon },
   { id: "profile", label: "프로필", Icon: PersonIcon },
 ];
 
 /**
- * The floating black pill. The centre slot is a raised action rather than a
- * destination, so it sits between 탐색 and 여행 기록 exactly as the design shows.
+ * Three destinations in a narrow black pill. v3 lifts the add action out of the
+ * bar into its own floating button, so every slot here is a place to go.
  */
-export default function TabBar({ active, onNavigate, onAdd }) {
-  const [home, explore, trips, profile] = items;
-
-  const tab = (item) => {
-    const { id, label, Icon } = item;
-    const isActive = active === id;
-    return (
-      <button
-        key={id}
-        type="button"
-        aria-current={isActive ? "page" : undefined}
-        aria-label={label}
-        onClick={() => onNavigate(id)}
-      >
-        <Icon />
-        {isActive ? <span className="tab-dot" /> : null}
-      </button>
-    );
-  };
-
+export default function TabBar({ active, onNavigate }) {
   return (
     <nav className="tab-bar" aria-label="주요 화면">
-      {tab(home)}
-      {tab(explore)}
-      <button type="button" className="tab-fab" onClick={onAdd} aria-label="장소 기록 추가">
-        <PlusIcon />
-      </button>
-      {tab(trips)}
-      {tab(profile)}
+      {TABS.map(({ id, label, Icon }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            aria-current={isActive ? "page" : undefined}
+            aria-label={label}
+            onClick={() => onNavigate(id)}
+          >
+            <Icon />
+            {isActive ? <span className="tab-dot" /> : null}
+          </button>
+        );
+      })}
     </nav>
+  );
+}
+
+/** The 56px black circle that sits above the bar on the 기록 screen. */
+export function AddButton({ onClick, label = "장소 기록 추가" }) {
+  return (
+    <button type="button" className="fab" onClick={onClick} aria-label={label}>
+      <PlusIcon width={22} height={22} />
+    </button>
   );
 }

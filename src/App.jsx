@@ -14,30 +14,28 @@ import {
   getStats,
   getTripCovers,
   listFeedPosts,
-  listSavedPostIds,
   listTrips,
   publishTripToFeed,
   reorderPlaces,
   savePlace,
   saveSettings,
   signOut,
-  toggleSavedPost,
   updateTrip,
 } from "./data.js";
 import PlaceEditor from "./components/PlaceEditor.jsx";
 import ReelsView from "./components/ReelsView.jsx";
 import ReorderScreen from "./components/ReorderScreen.jsx";
-import TabBar from "./components/TabBar.jsx";
+import TabBar, { TABS } from "./components/TabBar.jsx";
+import TabPager from "./components/TabPager.jsx";
 import AuthView from "./views/AuthView.jsx";
-import ExploreView from "./views/ExploreView.jsx";
-import HomeView from "./views/HomeView.jsx";
+import RecordsView from "./views/RecordsView.jsx";
 import ProfileView from "./views/ProfileView.jsx";
 import TripDetailView from "./views/TripDetailView.jsx";
-import TripsView from "./views/TripsView.jsx";
+import SearchView from "./views/SearchView.jsx";
 import { useBlobUrlMap, useInstallPrompt } from "./hooks.js";
 
 const SESSION_MARK = "smj-browser-session";
-const TAB_ROUTES = ["home", "explore", "trips", "profile"];
+const TAB_ROUTES = TABS.map((tab) => tab.id);
 const GUEST = { id: "guest", name: "게스트", email: "로그인하면 기록이 저장됩니다", guest: true };
 
 const todayTitle = () => `${new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric" }).format(new Date())} 코스`;
@@ -52,22 +50,19 @@ export default function App() {
   const [stats, setStats] = useState({ trips: 0, places: 0, photos: 0, videos: 0 });
 
   const [posts, setPosts] = useState([]);
-  const [savedIds, setSavedIds] = useState([]);
 
   const [currentTripId, setCurrentTripId] = useState("");
   const [places, setPlaces] = useState([]);
-  const [placesByTrip, setPlacesByTrip] = useState({});
   const [mediaByPlace, setMediaByPlace] = useState({});
   const [selectedPlaceId, setSelectedPlaceId] = useState("");
 
-  const [route, setRoute] = useState({ name: "home" });
+  const [route, setRoute] = useState({ name: "records" });
   const [notice, setNotice] = useState("");
 
   const install = useInstallPrompt();
   const isGuest = Boolean(user?.guest);
 
   const currentTrip = trips.find((trip) => trip.id === currentTripId) || null;
-  const activeTrip = trips.find((trip) => trip.status !== "complete") || null;
 
   /* --- object URLs ------------------------------------------------------- */
 
@@ -90,17 +85,10 @@ export default function App() {
       listFeedPosts(),
     ]);
     const nextStats = await getStats({ trips: nextTrips, placeCounts: counts });
-    const placeEntries = await Promise.all(
-      nextTrips.map(async (trip) => [trip.id, await getPlaces(trip.id).catch(() => [])])
-    );
-
     setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id] || 0 })));
     setCovers(nextCovers);
     setStats(nextStats);
     setPosts(nextPosts);
-    setPlacesByTrip(Object.fromEntries(placeEntries));
-
-    setSavedIds(await listSavedPostIds(activeUser?.id));
 
     return nextTrips;
   }, []);
@@ -187,7 +175,7 @@ export default function App() {
     sessionStorage.setItem(SESSION_MARK, "1");
     setSettings(await saveSettings({ autoLogin }));
     setUser(nextUser);
-    setRoute({ name: "home" });
+    setRoute({ name: "records" });
   };
 
   const handleSignOut = async () => {
@@ -196,12 +184,11 @@ export default function App() {
     setUser(null);
     setCurrentTripId("");
     setPlaces([]);
-    setPlacesByTrip({});
     setMediaByPlace({});
-    setRoute({ name: "home" });
+    setRoute({ name: "records" });
   };
 
-  const openTrip = (tripId, from = "trips") => {
+  const openTrip = (tripId, from = "records") => {
     setCurrentTripId(tripId);
     setSelectedPlaceId("");
     setRoute({ name: "trip", from });
@@ -212,7 +199,7 @@ export default function App() {
     await loadLibrary(user);
     setCurrentTripId(trip.id);
     setSelectedPlaceId("");
-    setRoute({ name: "trip", from: "trips" });
+    setRoute({ name: "trip", from: "records" });
     setNotice("새 여행을 시작했습니다.");
     return trip;
   };
@@ -224,14 +211,6 @@ export default function App() {
       tripId = trip.id;
     }
     setRoute({ name: "place", placeId });
-  };
-
-  const handleFab = () => {
-    if (isGuest) {
-      setNotice("기록하려면 로그인이 필요합니다.");
-      return;
-    }
-    openPlaceEditor(null);
   };
 
   const handleSavePlace = async (placeInput, files) => {
@@ -268,13 +247,13 @@ export default function App() {
   const publishTrip = async () => {
     if (!currentTrip) return;
     if (!settings.feedPublic) {
-      setNotice("프로필에서 ‘피드에 코스 공개’를 먼저 켜 주세요.");
+      setNotice("프로필에서 ‘검색에 코스 공개’를 먼저 켜 주세요.");
       return;
     }
     await publishTripToFeed({ trip: currentTrip, places, user });
     await loadLibrary(user);
-    setRoute({ name: "explore" });
-    setNotice("내 코스를 피드에 올렸습니다.");
+    setRoute({ name: "search" });
+    setNotice("내 코스를 검색에 공개했습니다.");
   };
 
   const completeTrip = async () => {
@@ -303,17 +282,8 @@ export default function App() {
     const remaining = await loadLibrary(user);
     const next = remaining.find((trip) => trip.id !== currentTrip.id);
     setCurrentTripId(next?.id || "");
-    setRoute({ name: "trips" });
+    setRoute({ name: "records" });
     setNotice("여행을 삭제했습니다.");
-  };
-
-  const toggleSave = async (postId) => {
-    if (isGuest) {
-      setNotice("담으려면 로그인이 필요합니다.");
-      return;
-    }
-    await toggleSavedPost(user.id, postId);
-    setSavedIds(await listSavedPostIds(user.id));
   };
 
   const toggleSetting = async (key) => {
@@ -373,64 +343,48 @@ export default function App() {
     </section>
   );
 
+  const tabIndex = Math.max(0, TAB_ROUTES.indexOf(route.name));
+  const goToTab = (id) => setRoute({ name: id });
+
   return (
     <main className="phone">
-      {route.name === "home" ? (
-        isGuest ? (
-          guestWall("내 여행 기록")
-        ) : (
-          <HomeView
-            activeTrip={activeTrip}
-            trips={trips}
-            stats={stats}
-            tripCoverUrls={tripCoverUrls}
-            placesByTrip={placesByTrip}
-            mediaByPlace={mediaByPlace}
-            mediaUrls={mediaUrls}
-            onOpenPlace={(tripId, placeId) => {
-              setCurrentTripId(tripId);
-              setSelectedPlaceId(placeId);
-              setRoute({ name: "trip", from: "home" });
-            }}
-            onOpenTrip={(tripId) => openTrip(tripId, "home")}
-            onStartTrip={() => startTrip()}
-          />
-        )
-      ) : null}
-
-      {route.name === "explore" ? (
-        <ExploreView posts={posts} savedIds={savedIds} onToggleSave={toggleSave} />
-      ) : null}
-
-      {route.name === "trips" ? (
-        isGuest ? (
-          guestWall("여행 기록")
-        ) : (
-          <TripsView
-            trips={trips}
-            stats={stats}
-            tripCoverUrls={tripCoverUrls}
-            onOpenTrip={openTrip}
-            onCreateTrip={startTrip}
-          />
-        )
-      ) : null}
-
-      {route.name === "profile" ? (
-        isGuest ? (
-          guestWall("프로필")
-        ) : (
-          <ProfileView
-            user={user}
-            stats={stats}
-            settings={settings}
-            install={install}
-            onToggleSetting={toggleSetting}
-            onExport={runExport}
-            onChangePassword={runChangePassword}
-            onSignOut={handleSignOut}
-          />
-        )
+      {showTabs ? (
+        <>
+          <TabPager
+            index={tabIndex}
+            count={TAB_ROUTES.length}
+            onIndexChange={(next) => goToTab(TAB_ROUTES[next])}
+          >
+            {[
+              isGuest ? (
+                guestWall("나만의 여행 코스")
+              ) : (
+                <RecordsView
+                  trips={trips}
+                  tripCoverUrls={tripCoverUrls}
+                  onOpenTrip={openTrip}
+                  onCreateTrip={startTrip}
+                />
+              ),
+              <SearchView posts={posts} />,
+              isGuest ? (
+                guestWall("프로필")
+              ) : (
+                <ProfileView
+                  user={user}
+                  stats={stats}
+                  settings={settings}
+                  install={install}
+                  onToggleSetting={toggleSetting}
+                  onExport={runExport}
+                  onChangePassword={runChangePassword}
+                  onSignOut={handleSignOut}
+                />
+              ),
+            ]}
+          </TabPager>
+          <TabBar active={route.name} onNavigate={goToTab} />
+        </>
       ) : null}
 
       {route.name === "trip" && currentTrip ? (
@@ -441,7 +395,7 @@ export default function App() {
           mediaUrls={mediaUrls}
           selectedPlaceId={selectedPlaceId}
           onSelectPlace={setSelectedPlaceId}
-          onBack={() => setRoute({ name: route.from || "trips" })}
+          onBack={() => setRoute({ name: route.from || "records" })}
           onReorder={() => setRoute({ name: "reorder" })}
           onAddPlace={() => openPlaceEditor(null)}
           onEditPlace={(placeId) => setRoute({ name: "place", placeId })}
@@ -461,7 +415,7 @@ export default function App() {
             places.length ? { lat: places[places.length - 1].lat, lng: places[places.length - 1].lng } : null
           }
           media={editingPlace ? mediaByPlace[editingPlace.id] || [] : []}
-          onCancel={() => setRoute({ name: currentTrip ? "trip" : "home" })}
+          onCancel={() => setRoute({ name: currentTrip ? "trip" : "records" })}
           onSave={handleSavePlace}
           onDelete={handleDeletePlace}
           onDeleteMedia={handleDeleteMedia}
@@ -477,9 +431,9 @@ export default function App() {
           <div className="empty">
             <span className="eyebrow">여행</span>
             <h2>선택한 여행이 없어요.</h2>
-            <p>여행 기록에서 여행을 고르거나 새로 만들어 주세요.</p>
-            <button className="pill solid" type="button" onClick={() => setRoute({ name: "trips" })}>
-              여행 기록으로
+            <p>내 코스에서 여행을 고르거나 새로 만들어 주세요.</p>
+            <button className="pill solid" type="button" onClick={() => setRoute({ name: "records" })}>
+              내 코스로
             </button>
           </div>
         </section>
@@ -489,17 +443,6 @@ export default function App() {
         <button className="notice" type="button" onClick={() => setNotice("")}>
           {notice}
         </button>
-      ) : null}
-
-      {showTabs ? (
-        <TabBar
-          active={route.name}
-          onNavigate={(id) => {
-            if (id === "home" && activeTrip && activeTrip.id !== currentTripId) setCurrentTripId(activeTrip.id);
-            setRoute({ name: id });
-          }}
-          onAdd={handleFab}
-        />
       ) : null}
     </main>
   );

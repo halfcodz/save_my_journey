@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { orderLabel } from "../hooks.js";
 import L from "leaflet";
 
 const DEFAULT_CENTER = [37.5665, 126.978];
@@ -15,8 +16,8 @@ const tileLayer = () =>
 export const numberPin = (order, active) =>
   L.divIcon({
     className: "",
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
     html: `<div class="pin${active ? " is-active" : ""}">${String(order)}</div>`,
   });
 
@@ -94,7 +95,6 @@ export default function RouteMap({ places, selectedPlaceId, onSelectPlace, onPic
 
     const map = L.map(nodeRef.current, { zoomControl: false }).setView(DEFAULT_CENTER, 13);
     tileLayer().addTo(map);
-    L.control.zoom({ position: "bottomright" }).addTo(map);
     map.on("click", (event) => pickRef.current?.({ lat: event.latlng.lat, lng: event.latlng.lng }));
 
     layerRef.current = L.layerGroup().addTo(map);
@@ -169,9 +169,9 @@ export default function RouteMap({ places, selectedPlaceId, onSelectPlace, onPic
 
     places.forEach((place) => {
       const marker = L.marker([place.lat, place.lng], {
-        icon: numberPin(place.order, place.id === selectedPlaceId),
+        icon: numberPin(orderLabel(place.order), place.id === selectedPlaceId),
         keyboard: true,
-        alt: `${place.order}번 ${place.name}`,
+        alt: `${orderLabel(place.order)} ${place.name}`,
       });
       marker.on("click", () => selectRef.current?.(place.id));
       marker.addTo(layer);

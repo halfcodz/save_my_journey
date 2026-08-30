@@ -101,8 +101,6 @@ export const deleteMedia = localData.deleteMedia;
 
 /* Local-only concerns: covers, stats, saves, likes, preferences, backup. */
 export const getTripCovers = localData.getTripCovers;
-export const listSavedPostIds = localData.listSavedPostIds;
-export const toggleSavedPost = localData.toggleSavedPost;
 export const getSettings = localData.getSettings;
 export const saveSettings = localData.saveSettings;
 export const exportBackup = localData.exportBackup;

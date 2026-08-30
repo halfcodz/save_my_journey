@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { formatDateRange, formatDotDate } from "../hooks.js";
+import { AddButton } from "../components/TabBar.jsx";
+import { formatDotDate } from "../hooks.js";
 
 /**
- * 여행 기록 — the newest in-progress trip gets a full cover card, everything
- * older collapses into 64px thumbnail rows.
+ * 나만의 여행 코스 — the trip library. The trip still being recorded takes a
+ * full cover card; everything finished collapses to a thumbnail row.
  */
-export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onCreateTrip }) {
+export default function RecordsView({ trips, tripCoverUrls, onOpenTrip, onCreateTrip }) {
   const [creating, setCreating] = useState(false);
   const [title, setTitle] = useState("");
 
@@ -22,46 +23,43 @@ export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onC
   return (
     <section className="screen">
       <div className="screen-head">
-        <div className="head-stack">
-          <h1 className="screen-title">여행 기록</h1>
-          <span className="eyebrow">
-            {stats.trips}개 여행 · {stats.places}개 핀
-          </span>
-        </div>
-        <button className="new-trip-mini" type="button" onClick={() => setCreating(true)} disabled={creating}>
-          ＋ 새 여행
-        </button>
+        <h1 className="screen-title">나만의 여행 코스</h1>
       </div>
 
-      {creating ? (
-        <form className="inline-create" onSubmit={create}>
-          <label className="field underline">
-            <span>새 여행 이름</span>
-            <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="예: 성수 한 바퀴" autoFocus />
-          </label>
-          <div className="inline-create-actions">
+      <div className="scroll with-tabs">
+        {creating ? (
+          <form className="panel" onSubmit={create} data-no-swipe>
+            <label className="field underline">
+              <span>새 여행 이름</span>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="예: 성수 한 바퀴"
+                autoFocus
+              />
+            </label>
             <button className="pill solid compact" type="submit">
               만들기
             </button>
             <button className="link-underline" type="button" onClick={() => setCreating(false)}>
               취소
             </button>
-          </div>
-        </form>
-      ) : null}
+          </form>
+        ) : null}
 
-      <div className="scroll with-tabs">
         {feature ? (
           <button type="button" className="trip-feature" onClick={() => onOpenTrip(feature.id)}>
             <span className="trip-feature-cover">
               {tripCoverUrls[feature.id] ? <img src={tripCoverUrls[feature.id]} alt="" /> : null}
-              <span className="badge">{feature.status === "complete" ? "완료" : "진행 중"}</span>
+              <span className="badge">{feature.status === "complete" ? "기록 완료" : "기록 중"}</span>
             </span>
             <span className="trip-feature-line">
               <span className="trip-feature-name">{feature.title}</span>
-              <span className="trip-feature-count">{feature.placeCount ?? 0}곳</span>
+              <span className="trip-feature-count">{feature.placeCount ?? 0}차까지</span>
             </span>
-            <span className="eyebrow trip-feature-date">{formatDotDate(feature.startedAt || feature.createdAt)}</span>
+            <span className="eyebrow trip-feature-date">
+              {formatDotDate(feature.startedAt || feature.createdAt)}
+            </span>
           </button>
         ) : null}
 
@@ -75,7 +73,7 @@ export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onC
                 <span className="row-copy">
                   <strong>{trip.title}</strong>
                   <span>
-                    {formatDateRange(trip.startedAt || trip.createdAt, trip.endedAt)} · {trip.placeCount ?? 0}곳
+                    {formatDotDate(trip.startedAt || trip.createdAt)} · {trip.placeCount ?? 0}차까지
                   </span>
                 </span>
                 <span className="row-chevron" aria-hidden="true">
@@ -86,14 +84,16 @@ export default function TripsView({ trips, stats, tripCoverUrls, onOpenTrip, onC
           </div>
         ) : null}
 
-        {!trips.length ? (
+        {!trips.length && !creating ? (
           <div className="empty">
-            <span className="eyebrow">여행 기록</span>
-            <h2>첫 여행을 만들어 보세요.</h2>
-            <p>여행을 만들면 방문한 장소를 순서대로 남길 수 있습니다.</p>
+            <span className="eyebrow">나만의 여행 코스</span>
+            <h2>첫 코스를 만들어 보세요.</h2>
+            <p>＋ 를 누르면 여행을 만들고 다녀온 곳을 차례로 남길 수 있습니다.</p>
           </div>
         ) : null}
       </div>
+
+      {!creating ? <AddButton onClick={() => setCreating(true)} label="새 여행 만들기" /> : null}
     </section>
   );
 }

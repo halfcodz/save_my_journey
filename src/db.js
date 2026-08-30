@@ -342,29 +342,6 @@ export async function getStats() {
   };
 }
 
-const markKey = (userId, postId) => `${userId || "local"}::${postId}`;
-
-async function listMarks(store, userId) {
-  const db = await dbPromise;
-  const prefix = `${userId || "local"}::`;
-  const rows = await db.getAll(store);
-  return rows.filter((row) => row.id.startsWith(prefix)).map((row) => row.postId);
-}
-
-async function toggleMark(store, userId, postId) {
-  const db = await dbPromise;
-  const id = markKey(userId, postId);
-  const existing = await db.get(store, id);
-  if (existing) {
-    await db.delete(store, id);
-    return false;
-  }
-  await db.put(store, { id, postId, userId: userId || "local", createdAt: now() });
-  return true;
-}
-
-export const listSavedPostIds = (userId) => listMarks("saved", userId);
-export const toggleSavedPost = (userId, postId) => toggleMark("saved", userId, postId);
 
 const DEFAULT_SETTINGS = { id: "prefs", feedPublic: false, autoLogin: true };
 
