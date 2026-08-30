@@ -234,7 +234,6 @@ export default function App({ updateReady = false, onApplyUpdate }) {
     setCurrentTripId(trip.id);
     setSelectedPlaceId("");
     setRoute({ name: "trip", from: "records" });
-    setNotice("새 여행을 시작했습니다.");
     return trip;
   };
 

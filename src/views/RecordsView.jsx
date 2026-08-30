@@ -163,7 +163,6 @@ export default function RecordsView({
           </div>
         ) : null}
 
-        {trips.length ? <p className="list-hint">코스를 길게 누르면 수정하거나 지울 수 있어요.</p> : null}
       </PullToRefresh>
 
       {!composer ? (

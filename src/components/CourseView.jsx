@@ -4,8 +4,8 @@ import { dayLabel, formatClock, groupByDay, useMediaUrls, useThemeColor } from "
 
 const RouteMap = lazy(() => import("./RouteMap.jsx"));
 
-const SWIPE_DISTANCE = 0.2;   // 화면 폭의 20%를 넘기면 일차가 바뀐다
-const SWIPE_VELOCITY = 0.4;
+const SWIPE_DISTANCE = 0.14;   // 화면 폭의 20%를 넘기면 일차가 바뀐다
+const SWIPE_VELOCITY = 0.28;
 const AXIS_SLOP = 8;
 const MAP_PULL = 90;          // 위로 이만큼 밀면 지도가 열린다
 
@@ -19,6 +19,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   const [dayIndex, setDayIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [drag, setDrag] = useState(0);
+  const [dragAxis, setDragAxis] = useState(null);
   const [animating, setAnimating] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const [mapPlaceId, setMapPlaceId] = useState("");
@@ -100,6 +101,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
     if (!g.axis) {
       if (Math.abs(dx) < AXIS_SLOP && Math.abs(dy) < AXIS_SLOP) return;
       g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      setDragAxis(g.axis);
       g.moved = true;
       setAnimating(false);
     }
@@ -123,6 +125,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
     const g = gestureRef.current;
     gestureRef.current = null;
     setAnimating(true);
+    setDragAxis(null);
 
     if (!g) return;
 
@@ -179,8 +182,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
     );
   }
 
-  const isVertical = drag < 0 && drag >= -1;
-  const trackStyle = isVertical
+  const trackStyle = dragAxis === "y"
     ? { transform: `translate3d(0, ${drag * MAP_PULL}px, 0)`, opacity: 1 + drag * 0.25 }
     : { transform: `translate3d(${drag * 100}%, 0, 0)` };
 
@@ -214,11 +216,6 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
           </span>
           <h2>{frame?.place.name}</h2>
           {frame?.place.note ? <p>{frame.place.note}</p> : null}
-          <p className="reel-hint">
-            {dayIndex < framesByDay.length - 1
-              ? "탭하면 다음 사진 · 옆으로 밀면 다음 일차 · 위로 밀면 지도"
-              : "탭하면 다음 사진 · 위로 밀면 지도"}
-          </p>
         </div>
       </div>
 
