@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "./Icons.jsx";
+import RouteMap from "./RouteMapSwitch.jsx";
 import { dayLabel, formatClock, groupByDay, useMediaUrls, useThemeColor } from "../hooks.js";
-
-const RouteMap = lazy(() => import("./RouteMap.jsx"));
 
 const SWIPE_DISTANCE = 0.14;   // 화면 폭의 20%를 넘기면 일차가 바뀐다
 const SWIPE_VELOCITY = 0.28;

@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import RouteMap from "../components/RouteMap.jsx";
+import { Suspense, useRef, useState } from "react";
+import RouteMap from "../components/RouteMapSwitch.jsx";
 import { BackIcon, GripIcon } from "../components/Icons.jsx";
 import { dayLabel, describeMedia, formatClock, groupByDay } from "../hooks.js";
 
@@ -49,12 +49,14 @@ export default function TripDetailView({
 
   return (
     <section className="detail">
+      <Suspense fallback={<div className="detail-map map-fallback">지도를 여는 중</div>}>
       <RouteMap
         places={places}
         selectedPlaceId={selectedPlaceId}
         onSelectPlace={onSelectPlace}
         bottomPadding={expanded ? 120 : 150}
       />
+      </Suspense>
 
       <div className="detail-bar">
         <button type="button" className="float-btn" onClick={onBack} aria-label="뒤로">

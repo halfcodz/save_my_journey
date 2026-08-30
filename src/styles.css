@@ -1816,3 +1816,61 @@ ol, ul { padding: 0; list-style: none; }
 .course-map-list .stop-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .course-map-list .stop-copy strong { font-size: 15.5px; font-weight: 700; letter-spacing: -0.02em; }
 .course-map-list .stop-copy span { font-size: 12px; color: var(--t3); }
+
+/* --- map pins ---------------------------------------------------------------
+   A teardrop that points at the spot instead of a disc that covers it.
+   ------------------------------------------------------------------------- */
+
+.map-pin {
+  position: relative;
+  width: 30px;
+  height: 38px;
+  cursor: pointer;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.map-pin::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 8px 0;
+  border-radius: 50% 50% 50% 50% / 55% 55% 45% 45%;
+  background: var(--paper);
+  border: 1.5px solid var(--ink);
+}
+
+.map-pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 2px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: var(--ink);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  width: 10px;
+}
+
+.map-pin span {
+  position: absolute;
+  inset: 0 0 8px 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.map-pin.is-active::before { background: var(--ink); border-color: var(--paper); }
+.map-pin.is-active span { color: var(--paper); }
+
+.map-fallback {
+  display: grid;
+  place-items: center;
+  background: var(--fill);
+  color: var(--t2);
+  font-size: 13.5px;
+  text-align: center;
+  padding: 24px;
+}

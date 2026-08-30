@@ -23,6 +23,54 @@ const corsHeaders = (origin) => ({
   Vary: "Origin",
 });
 
+/** Kakao Mobility 자동차 길찾기. 좌표는 "lng,lat|lng,lat|..." 형식. */
+async function handleRoute(url, env, origin) {
+  const headers = { ...corsHeaders(origin), "Content-Type": "application/json" };
+  const points = (url.searchParams.get("points") || "").split("|").filter(Boolean);
+  if (points.length < 2) return new Response(JSON.stringify({ error: "need two points" }), { status: 400, headers });
+
+  const params = new URLSearchParams({
+    origin: points[0],
+    destination: points[points.length - 1],
+    priority: "RECOMMEND",
+  });
+  const waypoints = points.slice(1, -1);
+  if (waypoints.length) params.set("waypoints", waypoints.slice(0, 30).join("|"));
+
+  const upstream = await fetch(`https://apis-navi.kakaomobility.com/v1/directions?${params}`, {
+    headers: { Authorization: `KakaoAK ${env.KAKAO_REST_KEY}` },
+  });
+
+  if (!upstream.ok) {
+    const detail = await upstream.text().catch(() => "");
+    return new Response(JSON.stringify({ error: "route upstream failed", status: upstream.status, detail: detail.slice(0, 300) }), {
+      status: 502,
+      headers,
+    });
+  }
+
+  const data = await upstream.json();
+  const route = data.routes?.[0];
+  if (!route || route.result_code !== 0) {
+    return new Response(JSON.stringify({ error: "no route", detail: route?.result_msg || "" }), { status: 502, headers });
+  }
+
+  // 안내 구간의 좌표를 이어 선 하나로 만든다.
+  const coords = [];
+  (route.sections || []).forEach((section) => {
+    (section.roads || []).forEach((road) => {
+      for (let i = 0; i + 1 < road.vertexes.length; i += 2) {
+        coords.push([road.vertexes[i + 1], road.vertexes[i]]);
+      }
+    });
+  });
+
+  return new Response(
+    JSON.stringify({ coords, distance: route.summary?.distance, duration: route.summary?.duration }),
+    { headers: { ...headers, "Cache-Control": "public, max-age=300" } }
+  );
+}
+
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
@@ -40,6 +88,12 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // 길찾기도 같은 키를 쓰므로 같은 프록시에서 처리한다.
+    if (url.searchParams.get("mode") === "route") {
+      return handleRoute(url, env, origin);
+    }
+
     const query = (url.searchParams.get("q") || "").trim();
     if (!query) {
       return new Response(JSON.stringify({ places: [] }), {
