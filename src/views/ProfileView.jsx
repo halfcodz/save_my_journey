@@ -82,24 +82,15 @@ export default function ProfileView({
           </div>
 
           <div className="setting">
-            <span>기기에만 저장</span>
-            <button
-              type="button"
-              className="toggle"
-              aria-pressed={settings.localOnly}
-              aria-label="기기에만 저장"
-              onClick={() => onToggleSetting("localOnly")}
-            />
-          </div>
-
-          <div className="setting">
-            <span>피드에 코스 공개</span>
+            <div className="setting-copy">
+              <span>피드에 코스 공개</span>
+              <span className="setting-note">끄면 기록이 이 기기와 내 계정에만 남습니다</span>
+            </div>
             <button
               type="button"
               className="toggle"
               aria-pressed={settings.feedPublic}
               aria-label="피드에 코스 공개"
-              disabled={settings.localOnly}
               onClick={() => onToggleSetting("feedPublic")}
             />
           </div>

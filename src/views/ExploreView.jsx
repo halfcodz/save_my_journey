@@ -2,20 +2,25 @@ import { useMemo, useState } from "react";
 import { padOrder } from "../hooks.js";
 
 const ALL = "전체";
+const SAVED = "담은 코스";
 
 /**
- * 탐색 — other people's courses. Covers are a 2:1 mosaic, the route is one
- * compressed line of numbered stops, and 담기 is the only filled control.
+ * 탐색 — other people's courses. 담기 is the single action; the saved set is a
+ * filter here rather than a separate screen elsewhere.
  */
-export default function ExploreView({ posts, savedIds, likedIds, onToggleSave, onToggleLike }) {
+export default function ExploreView({ posts, savedIds, onToggleSave }) {
   const [filter, setFilter] = useState(ALL);
 
-  const categories = useMemo(
-    () => [ALL, ...Array.from(new Set(posts.map((post) => post.category).filter(Boolean)))],
-    [posts]
-  );
+  const chips = useMemo(() => {
+    const categories = Array.from(new Set(posts.map((post) => post.category).filter(Boolean)));
+    return [ALL, ...categories, ...(savedIds.length ? [SAVED] : [])];
+  }, [posts, savedIds.length]);
 
-  const visible = posts.filter((post) => filter === ALL || post.category === filter);
+  const visible = posts.filter((post) => {
+    if (filter === ALL) return true;
+    if (filter === SAVED) return savedIds.includes(post.id);
+    return post.category === filter;
+  });
 
   return (
     <section className="screen">
@@ -24,15 +29,15 @@ export default function ExploreView({ posts, savedIds, likedIds, onToggleSave, o
       </div>
 
       <div className="chip-row" role="group" aria-label="코스 분류">
-        {categories.map((category) => (
+        {chips.map((chip) => (
           <button
-            key={category}
+            key={chip}
             type="button"
             className="chip"
-            aria-pressed={filter === category}
-            onClick={() => setFilter(category)}
+            aria-pressed={filter === chip}
+            onClick={() => setFilter(chip)}
           >
-            {category}
+            {chip}
           </button>
         ))}
       </div>
@@ -41,7 +46,6 @@ export default function ExploreView({ posts, savedIds, likedIds, onToggleSave, o
         {visible.length ? (
           <div className="explore-stack">
             {visible.map((post) => {
-              const liked = likedIds.includes(post.id);
               const saved = savedIds.includes(post.id);
               const steps = post.places.slice(0, 3);
               const extra = post.places.length - steps.length;
@@ -82,17 +86,7 @@ export default function ExploreView({ posts, savedIds, likedIds, onToggleSave, o
                       {steps.map((place) => `${padOrder(place.order)} ${place.name}`).join(" · ")}
                       {extra > 0 ? ` · +${extra}` : ""}
                     </p>
-                    <div className="course-stats">
-                      <button
-                        type="button"
-                        aria-pressed={liked}
-                        aria-label={liked ? "좋아요 취소" : "좋아요"}
-                        onClick={() => onToggleLike(post.id)}
-                      >
-                        {liked ? "♥" : "♡"} {(post.likes || 0) + (liked ? 1 : 0)}
-                      </button>
-                      <span>저장 {(post.saves || 0) + (saved ? 1 : 0)}</span>
-                    </div>
+                    <p className="course-stats">저장 {(post.saves || 0) + (saved ? 1 : 0)}</p>
                   </div>
                 </article>
               );
@@ -101,8 +95,8 @@ export default function ExploreView({ posts, savedIds, likedIds, onToggleSave, o
         ) : (
           <div className="empty">
             <span className="eyebrow">탐색</span>
-            <h2>이 분류에는 코스가 없어요.</h2>
-            <p>다른 분류를 골라 보세요.</p>
+            <h2>{filter === SAVED ? "담아 둔 코스가 없어요." : "이 분류에는 코스가 없어요."}</h2>
+            <p>{filter === SAVED ? "마음에 드는 코스를 담기 해 보세요." : "다른 분류를 골라 보세요."}</p>
           </div>
         )}
       </div>

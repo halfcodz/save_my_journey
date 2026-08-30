@@ -429,16 +429,8 @@ async function toggleMark(store, userId, postId) {
 
 export const listSavedPostIds = (userId) => listMarks("saved", userId);
 export const toggleSavedPost = (userId, postId) => toggleMark("saved", userId, postId);
-export const listLikedPostIds = (userId) => listMarks("likes", userId);
-export const toggleLikedPost = (userId, postId) => toggleMark("likes", userId, postId);
 
-export async function getSavedPosts(userId) {
-  const [ids, posts] = await Promise.all([listSavedPostIds(userId), listFeedPosts()]);
-  const wanted = new Set(ids);
-  return posts.filter((post) => wanted.has(post.id));
-}
-
-const DEFAULT_SETTINGS = { id: "prefs", localOnly: true, feedPublic: false, autoLogin: true };
+const DEFAULT_SETTINGS = { id: "prefs", feedPublic: false, autoLogin: true };
 
 export async function getSettings() {
   const db = await dbPromise;

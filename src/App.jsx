@@ -9,13 +9,11 @@ import {
   getMediaForTrip,
   getPlaceCounts,
   getPlaces,
-  getSavedPosts,
   getSessionUser,
   getSettings,
   getStats,
   getTripCovers,
   listFeedPosts,
-  listLikedPostIds,
   listSavedPostIds,
   listTrips,
   publishTripToFeed,
@@ -23,7 +21,6 @@ import {
   savePlace,
   saveSettings,
   signOut,
-  toggleLikedPost,
   toggleSavedPost,
   updateTrip,
 } from "./data.js";
@@ -48,7 +45,7 @@ const todayTitle = () => `${new Intl.DateTimeFormat("ko-KR", { month: "long", da
 export default function App() {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState(null);
-  const [settings, setSettings] = useState({ localOnly: true, feedPublic: false, autoLogin: true });
+  const [settings, setSettings] = useState({ feedPublic: false, autoLogin: true });
 
   const [trips, setTrips] = useState([]);
   const [covers, setCovers] = useState({});
@@ -56,8 +53,6 @@ export default function App() {
 
   const [posts, setPosts] = useState([]);
   const [savedIds, setSavedIds] = useState([]);
-  const [savedPosts, setSavedPosts] = useState([]);
-  const [likedIds, setLikedIds] = useState([]);
 
   const [currentTripId, setCurrentTripId] = useState("");
   const [places, setPlaces] = useState([]);
@@ -72,7 +67,6 @@ export default function App() {
 
   const currentTrip = trips.find((trip) => trip.id === currentTripId) || null;
   const activeTrip = trips.find((trip) => trip.status !== "complete") || null;
-  const pastTrips = trips.filter((trip) => trip.status === "complete");
 
   /* --- object URLs ------------------------------------------------------- */
 
@@ -88,27 +82,20 @@ export default function App() {
   /* --- loading ----------------------------------------------------------- */
 
   const loadLibrary = useCallback(async (activeUser) => {
-    const [nextTrips, counts, nextCovers, nextStats, nextPosts] = await Promise.all([
+    const [nextTrips, counts, nextCovers, nextPosts] = await Promise.all([
       listTrips(),
       getPlaceCounts(),
       getTripCovers(),
-      getStats(),
       listFeedPosts(),
     ]);
+    const nextStats = await getStats({ trips: nextTrips, placeCounts: counts });
 
     setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id] || 0 })));
     setCovers(nextCovers);
     setStats(nextStats);
     setPosts(nextPosts);
 
-    const [saved, liked, savedList] = await Promise.all([
-      listSavedPostIds(activeUser?.id),
-      listLikedPostIds(activeUser?.id),
-      getSavedPosts(activeUser?.id),
-    ]);
-    setSavedIds(saved);
-    setLikedIds(liked);
-    setSavedPosts(savedList);
+    setSavedIds(await listSavedPostIds(activeUser?.id));
 
     return nextTrips;
   }, []);
@@ -267,8 +254,8 @@ export default function App() {
 
   const publishTrip = async () => {
     if (!currentTrip) return;
-    if (settings.localOnly) {
-      setNotice("‘기기에만 저장’이 켜져 있어 공개하지 않았습니다.");
+    if (!settings.feedPublic) {
+      setNotice("프로필에서 ‘피드에 코스 공개’를 먼저 켜 주세요.");
       return;
     }
     await publishTripToFeed({ trip: currentTrip, places, user });
@@ -287,7 +274,7 @@ export default function App() {
     });
     await loadLibrary(user);
 
-    if (status === "complete" && settings.feedPublic && !settings.localOnly && places.length) {
+    if (status === "complete" && settings.feedPublic && places.length) {
       await publishTripToFeed({ trip: currentTrip, places, user });
       await loadLibrary(user);
       setNotice("여행을 완료하고 피드에 공개했습니다.");
@@ -313,24 +300,11 @@ export default function App() {
       return;
     }
     await toggleSavedPost(user.id, postId);
-    const [saved, savedList] = await Promise.all([listSavedPostIds(user.id), getSavedPosts(user.id)]);
-    setSavedIds(saved);
-    setSavedPosts(savedList);
-  };
-
-  const toggleLike = async (postId) => {
-    if (isGuest) {
-      setNotice("좋아요를 누르려면 로그인이 필요합니다.");
-      return;
-    }
-    await toggleLikedPost(user.id, postId);
-    setLikedIds(await listLikedPostIds(user.id));
+    setSavedIds(await listSavedPostIds(user.id));
   };
 
   const toggleSetting = async (key) => {
-    const next = { [key]: !settings[key] };
-    if (key === "localOnly" && !settings.localOnly) next.feedPublic = false;
-    setSettings(await saveSettings(next));
+    setSettings(await saveSettings({ [key]: !settings[key] }));
   };
 
   const runExport = async () => {
@@ -397,31 +371,18 @@ export default function App() {
             places={activeTrip && activeTrip.id === currentTripId ? places : []}
             mediaByPlace={mediaByPlace}
             mediaUrls={mediaUrls}
-            pastTrips={pastTrips}
-            tripCoverUrls={tripCoverUrls}
-            savedPosts={savedPosts}
             onOpenPlace={(tripId, placeId) => {
               setCurrentTripId(tripId);
               setRoute({ name: "place", placeId });
             }}
             onOpenTrip={(tripId) => openTrip(tripId, "home")}
-            onOpenReels={() => {
-              setCurrentTripId(activeTrip.id);
-              setRoute({ name: "reels" });
-            }}
             onStartTrip={() => startTrip()}
           />
         )
       ) : null}
 
       {route.name === "explore" ? (
-        <ExploreView
-          posts={posts}
-          savedIds={savedIds}
-          likedIds={likedIds}
-          onToggleSave={toggleSave}
-          onToggleLike={toggleLike}
-        />
+        <ExploreView posts={posts} savedIds={savedIds} onToggleSave={toggleSave} />
       ) : null}
 
       {route.name === "trips" ? (

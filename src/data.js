@@ -103,8 +103,6 @@ export const deleteMedia = localData.deleteMedia;
 export const getTripCovers = localData.getTripCovers;
 export const listSavedPostIds = localData.listSavedPostIds;
 export const toggleSavedPost = localData.toggleSavedPost;
-export const listLikedPostIds = localData.listLikedPostIds;
-export const toggleLikedPost = localData.toggleLikedPost;
 export const getSettings = localData.getSettings;
 export const saveSettings = localData.saveSettings;
 export const exportBackup = localData.exportBackup;
@@ -119,22 +117,21 @@ export async function getPlaceCounts() {
   return firebaseData.getPlaceCounts();
 }
 
-export async function getStats() {
+export async function getStats({ trips, placeCounts } = {}) {
   const localStats = await localData.getStats();
   if (!usesFirebaseBackend) return localStats;
 
-  const [trips, counts] = await Promise.all([listTrips(), getPlaceCounts()]);
+  // Callers that already hold trips/counts pass them in so a screen load does
+  // not read the same Firestore documents twice.
+  const [nextTrips, counts] = await Promise.all([
+    trips ?? listTrips(),
+    placeCounts ?? getPlaceCounts(),
+  ]);
   return {
     ...localStats,
-    trips: trips.length,
+    trips: nextTrips.length,
     places: Object.values(counts).reduce((total, count) => total + count, 0),
   };
-}
-
-export async function getSavedPosts(userId) {
-  const [ids, posts] = await Promise.all([localData.listSavedPostIds(userId), listFeedPosts()]);
-  const wanted = new Set(ids);
-  return posts.filter((post) => wanted.has(post.id));
 }
 
 export async function changePassword(input) {

@@ -8,11 +8,11 @@ The primary surface is a mobile-first operating app for recording a trip in the 
 
 ## Visual World
 
-흑백 · 미니멀 (design canvas 2A). Colour is removed entirely: pure black on white, with a five-step neutral ramp for hierarchy. Emphasis comes from weight, scale, and space rather than hue. Pretendard Variable carries the whole type system, headlines run 800 weight with tight negative tracking, and meta lines are 10.5–11px eyebrows at 0.1em letter-spacing. Map tiles are desaturated so the route reads as part of the same monochrome world.
+흑백 · 미니멀 (design canvas 2A). The interface itself is pure black on white with a five-step neutral ramp for hierarchy; emphasis comes from weight, scale, and space rather than hue. Pretendard Variable carries the whole type system, headlines run 800 weight with tight negative tracking, and meta lines are 10.5–11px eyebrows at 0.1em letter-spacing. Map tiles keep their real colour — terrain, water, and parks are information, not decoration — so the monochrome chrome frames a legible map rather than flattening it.
 
 ## Layout
 
-The app is a phone-width column. A floating black pill hovers over the content with five slots — 홈, 탐색, a raised white ＋ action, 내 여행, 프로필. 홈 opens on the in-progress trip as a vertical time rail. The trip detail is a full-bleed map with floating controls and a bottom sheet that can be pulled up over it. Place capture, reorder, and reels each take the full screen.
+The app is a phone-width column. A floating black pill hovers over the content with five slots — 홈, 탐색, a raised white ＋ action, 내 여행, 프로필. Each tab owns exactly one idea and never repeats another: 홈 shows only the trip in progress, 내 여행 owns the full trip library, 탐색 owns other people's courses and the set saved from them. The trip detail is a full-bleed map with floating controls and a bottom sheet that can be pulled up over it. Place capture, reorder, and reels each take the full screen.
 
 ## Components
 
@@ -24,7 +24,7 @@ The app is a phone-width column. A floating black pill hovers over the content w
 - The place sheet lists stops as 48px thumbnail rows; the selected row shows a dot and a 수정 affordance.
 - Reorder lifts the dragged row out of flow as a black card over a dashed slot.
 - Reels use full-height scroll snapping, story-style progress segments, and a thumbnail row to switch shots.
-- Settings are hairline rows with pill toggles — no cards.
+- Settings are hairline rows with pill toggles — no cards. A single 피드에 코스 공개 switch governs sharing; there is no second switch that contradicts it.
 
 ## Motion
 
@@ -36,4 +36,4 @@ Controls are semantic buttons with explicit labels; buttons contain only phrasin
 
 ## Constraints
 
-No paid APIs, hosted media storage, metered map SDKs, or tile bulk-download behavior are part of the design. Map tiles are intentionally not cached by the service worker. Photos and videos stay in IndexedDB on the device even when a Firebase backend is configured.
+No paid APIs, hosted media storage, metered map SDKs, or tile bulk-download behavior are part of the design. Map tiles are served in their original colour from OpenStreetMap with attribution and are intentionally not cached by the service worker. Photos and videos stay in IndexedDB on the device even when a Firebase backend is configured.
