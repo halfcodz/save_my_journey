@@ -55,6 +55,9 @@ export default function KakaoRouteMap({
           center: new kakao.maps.LatLng(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng),
           level: 5,
         });
+        map.addControl(new kakao.maps.MapTypeControl(), kakao.maps.ControlPosition.TOPRIGHT);
+        map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
+        map.setKeyboardShortcuts(true);
         mapRef.current = map;
 
         kakao.maps.event.addListener(map, "click", (event) => {
@@ -106,15 +109,24 @@ export default function KakaoRouteMap({
     );
 
     if (linePath.length > 1) {
+      // 카카오 길찾기처럼 흰 테두리 위에 파란 선을 얹는다.
+      const casing = new kakao.maps.Polyline({
+        path: linePath,
+        strokeWeight: 10,
+        strokeColor: "#ffffff",
+        strokeOpacity: 0.9,
+        strokeStyle: "solid",
+      });
       const line = new kakao.maps.Polyline({
         path: linePath,
         strokeWeight: 6,
-        strokeColor: "#000000",
+        strokeColor: "#2f6ded",
         strokeOpacity: 0.95,
         strokeStyle: style.id === "walk" ? "shortdot" : style.id === "drive" ? "longdash" : "solid",
       });
+      casing.setMap(map);
       line.setMap(map);
-      lineRef.current = line;
+      lineRef.current = { setMap: (v) => { casing.setMap(v); line.setMap(v); } };
     }
 
     const bounds = new kakao.maps.LatLngBounds();

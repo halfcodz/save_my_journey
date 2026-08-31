@@ -60,12 +60,12 @@ export default function TripDetailView({
         <button type="button" className="float-btn" onClick={onBack} aria-label="뒤로">
           <BackIcon />
         </button>
-        <span className="float-title">{trip.title}</span>
         <button type="button" className="float-btn" onClick={() => setMenuOpen(true)} aria-label="여행 메뉴">
           <span className="dots" aria-hidden="true">
             ⋯
           </span>
         </button>
+        <span className="float-title">{trip.title}</span>
       </div>
 
       <div className={`sheet${expanded ? " expanded" : ""}`}>

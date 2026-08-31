@@ -705,10 +705,10 @@ ol, ul { padding: 0; list-style: none; }
 
 .route-summary {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   top: calc(env(safe-area-inset-top, 0px) + 66px);
   left: 20px;
-  right: 20px;
+  right: 96px;
   min-height: 48px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.94);
@@ -738,13 +738,13 @@ ol, ul { padding: 0; list-style: none; }
 
 .detail-bar {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   margin-top: calc(env(safe-area-inset-top, 0px) + 14px);
   padding: 0 20px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 8px;
   flex: none;
 }
 
@@ -760,6 +760,7 @@ ol, ul { padding: 0; list-style: none; }
 }
 
 .float-title {
+  min-width: 0;
   padding: 10px 16px;
   border-radius: 999px;
   background: var(--paper);
@@ -767,7 +768,7 @@ ol, ul { padding: 0; list-style: none; }
   font-weight: 700;
   letter-spacing: -0.02em;
   box-shadow: var(--shadow-float);
-  max-width: 60%;
+  max-width: 45%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
