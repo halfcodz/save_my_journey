@@ -17,6 +17,7 @@ export default function RecordsView({
   onPlayTrip,
   onEditTrip,
   onDeleteTrip,
+  onPickCover,
   onCreateTrip,
   onRefresh,
 }) {
@@ -196,6 +197,16 @@ export default function RecordsView({
               }}
             >
               이름 · 종류 바꾸기
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const trip = menuTrip;
+                setMenuTrip(null);
+                onPickCover(trip.id);
+              }}
+            >
+              대표 사진 바꾸기
             </button>
             <button
               type="button"

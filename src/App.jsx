@@ -30,6 +30,7 @@ import ReorderScreen from "./components/ReorderScreen.jsx";
 import TabBar, { TABS } from "./components/TabBar.jsx";
 import TabPager from "./components/TabPager.jsx";
 import UpdateBanner from "./components/UpdateBanner.jsx";
+import CoverPicker from "./components/CoverPicker.jsx";
 import AuthView from "./views/AuthView.jsx";
 import RecordsView from "./views/RecordsView.jsx";
 
@@ -64,6 +65,7 @@ export default function App({ updateReady = false, onApplyUpdate }) {
   const [route, setRoute] = useState({ name: "records" });
   const [notice, setNotice] = useState("");
   const [avatar, setAvatar] = useState(null);
+  const [coverPicker, setCoverPicker] = useState(null); // { trip, media }
 
   const isGuest = Boolean(user?.guest);
 
@@ -94,12 +96,8 @@ export default function App({ updateReady = false, onApplyUpdate }) {
   /* --- loading ----------------------------------------------------------- */
 
   const loadLibrary = useCallback(async (activeUser) => {
-    const [nextTrips, counts, nextCovers, nextPosts] = await Promise.all([
-      listTrips(),
-      getTripCounts(),
-      getTripCovers(),
-      listFeedPosts(),
-    ]);
+    const [nextTrips, counts, nextPosts] = await Promise.all([listTrips(), getTripCounts(), listFeedPosts()]);
+    const nextCovers = await getTripCovers(nextTrips);
     const nextStats = await getStats({ trips: nextTrips, tripCounts: counts });
     setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id]?.places || 0, dayCount: counts[trip.id]?.days || 0 })));
     setCovers(nextCovers);
@@ -404,6 +402,15 @@ export default function App({ updateReady = false, onApplyUpdate }) {
                   }}
                   onEditTrip={(tripId) => openTrip(tripId, "records")}
                   onDeleteTrip={removeTrip}
+                  onPickCover={async (tripId) => {
+                    const trip = trips.find((item) => item.id === tripId);
+                    const media = (await getMediaForTrip(tripId)).filter((item) => item.type === "image");
+                    if (!media.length) {
+                      setNotice("이 코스에는 아직 사진이 없습니다.");
+                      return;
+                    }
+                    setCoverPicker({ trip, media });
+                  }}
                   onCreateTrip={startTrip}
                   onRefresh={refreshFromPull}
                 />
@@ -514,6 +521,20 @@ export default function App({ updateReady = false, onApplyUpdate }) {
       ) : null}
 
       {updateReady ? <UpdateBanner onReload={onApplyUpdate} /> : null}
+
+      {coverPicker ? (
+        <CoverPicker
+          trip={coverPicker.trip}
+          media={coverPicker.media}
+          onClose={() => setCoverPicker(null)}
+          onSelect={async (mediaId) => {
+            await updateTrip({ ...coverPicker.trip, coverMediaId: mediaId });
+            setCoverPicker(null);
+            await loadLibrary(user);
+            setNotice("대표 사진을 바꿨습니다.");
+          }}
+        />
+      ) : null}
 
       {notice ? (
         <button className="notice" type="button" onClick={() => setNotice("")}>

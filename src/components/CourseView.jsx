@@ -25,6 +25,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   const frameRef = useRef(null);
   const stageRef = useRef(null);
   const gestureRef = useRef(null);
+  const handlersRef = useRef({});
 
   useThemeColor("#000000");
 
@@ -225,6 +226,8 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
 
   // React는 touchmove를 passive로 붙여 preventDefault가 통하지 않는다.
   // iOS가 제스처를 스크롤로 가져가 pointercancel을 쏘는 것을 막으려면 직접 건다.
+  handlersRef.current = { beginGesture, moveGesture, endGesture };
+
   useEffect(() => {
     const node = stageRef.current;
     if (!node) return undefined;
@@ -232,17 +235,17 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
     const start = (event) => {
       if (event.touches.length !== 1) return;
       const t = event.touches[0];
-      beginGesture(event.target, t.clientX, t.clientY, event.timeStamp, "touch");
+      handlersRef.current.beginGesture(event.target, t.clientX, t.clientY, event.timeStamp, "touch");
     };
     const move = (event) => {
       if (!gestureRef.current || event.touches.length !== 1) return;
       const t = event.touches[0];
-      moveGesture(t.clientX, t.clientY, event.timeStamp);
+      handlersRef.current.moveGesture(t.clientX, t.clientY, event.timeStamp);
       if (gestureRef.current?.axis && event.cancelable) event.preventDefault();
     };
     const end = (event) => {
       const t = event.changedTouches[0];
-      endGesture(t?.clientX ?? 0, t?.clientY ?? 0);
+      handlersRef.current.endGesture(t?.clientX ?? 0, t?.clientY ?? 0);
     };
 
     node.addEventListener("touchstart", start, { passive: true });
@@ -255,7 +258,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
       node.removeEventListener("touchend", end);
       node.removeEventListener("touchcancel", end);
     };
-  });
+  }, []);
 
   useEffect(() => {
     const onKey = (event) => {

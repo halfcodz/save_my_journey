@@ -320,15 +320,28 @@ export async function publishTripToFeed({ trip, places, user }) {
  * Covers, stats, saves, likes, settings, backup — added for the v2 design.
  * ------------------------------------------------------------------------- */
 
-export async function getTripCovers() {
+/**
+ * One cover photo per trip: the one the traveller picked, or the first photo
+ * they added if they have not picked one.
+ * @param {Array<{id:string, coverMediaId?:string}>} trips
+ */
+export async function getTripCovers(trips = []) {
   const db = await dbPromise;
+  const wanted = new Map(trips.filter((t) => t.coverMediaId).map((t) => [t.coverMediaId, t.id]));
   const covers = {};
+  const firsts = {};
+
   let cursor = await db.transaction("media").store.openCursor();
   while (cursor) {
     const item = cursor.value;
-    if (item.tripId && !covers[item.tripId] && item.type === "image") covers[item.tripId] = item;
+    if (wanted.has(item.id)) covers[wanted.get(item.id)] = item;
+    if (item.tripId && !firsts[item.tripId] && item.type === "image") firsts[item.tripId] = item;
     cursor = await cursor.continue();
   }
+
+  Object.entries(firsts).forEach(([tripId, item]) => {
+    if (!covers[tripId]) covers[tripId] = item;
+  });
   return covers;
 }
 
