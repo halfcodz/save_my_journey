@@ -101,34 +101,40 @@ export default {
       });
     }
 
-    const params = new URLSearchParams({ query, size: "10" });
     const lat = url.searchParams.get("lat");
     const lng = url.searchParams.get("lng");
-    if (lat && lng) {
-      params.set("x", lng);
-      params.set("y", lat);
-      params.set("radius", "20000");
-      params.set("sort", "distance");
+
+    // 좌표를 주면 카카오가 그 근처를 우선하되 전국을 뒤진다. radius를 걸면
+    // 그 반경 밖은 아예 없는 셈이 되어, 서울에서 제주 카페를 못 찾는다.
+    const ask = async (withPoint) => {
+      const params = new URLSearchParams({ query, size: "15" });
+      if (withPoint && lat && lng) {
+        params.set("x", lng);
+        params.set("y", lat);
+      }
+      const response = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?${params}`, {
+        headers: { Authorization: `KakaoAK ${env.KAKAO_REST_KEY}` },
+      });
+      if (!response.ok) throw new Error(`kakao ${response.status}: ${(await response.text()).slice(0, 200)}`);
+      return (await response.json()).documents || [];
+    };
+
+    let documents;
+    try {
+      documents = await ask(true);
+      if (!documents.length && lat && lng) documents = await ask(false);
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "upstream failed", detail: String(error).slice(0, 300) }), {
+        status: 502,
+        headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
+      });
     }
 
-    const upstream = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?${params}`, {
-      headers: { Authorization: `KakaoAK ${env.KAKAO_REST_KEY}` },
-    });
-
-    if (!upstream.ok) {
-      // 카카오가 왜 거절했는지 그대로 넘겨 진단할 수 있게 한다. 키는 포함되지 않는다.
-      const detail = await upstream.text().catch(() => "");
-      return new Response(
-        JSON.stringify({ error: "upstream failed", status: upstream.status, detail: detail.slice(0, 300) }),
-        { status: 502, headers: { ...corsHeaders(origin), "Content-Type": "application/json" } }
-      );
-    }
-
-    const data = await upstream.json();
-    const places = (data.documents || []).map((doc) => ({
+    const places = documents.map((doc) => ({
       id: `kakao-${doc.id}`,
       name: doc.place_name,
       address: doc.road_address_name || doc.address_name,
+      category: doc.category_group_name || "",
       lat: Number(doc.y),
       lng: Number(doc.x),
     }));

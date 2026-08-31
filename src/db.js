@@ -54,6 +54,12 @@ const now = () => new Date().toISOString();
 const uid = () => crypto.randomUUID();
 const normalizeEmail = (email) => email.trim().toLowerCase();
 
+/** Counts kept on the trip so listing never has to read every place back. */
+const countsOf = (places) => ({
+  placeCount: places.length,
+  dayCount: places.reduce((max, place) => Math.max(max, place.day || 1), 0),
+});
+
 async function digest(value) {
   const bytes = new TextEncoder().encode(value);
   const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
@@ -233,8 +239,10 @@ export async function savePlace(placeInput, files = []) {
 
   await tx.objectStore("places").put(place);
   await Promise.all(newMedia.map((item) => tx.objectStore("media").put(item)));
+
+  const siblings = await tx.objectStore("places").index("tripId").getAll(place.tripId);
   const trip = await tx.objectStore("trips").get(place.tripId);
-  if (trip) await tx.objectStore("trips").put({ ...trip, updatedAt: timestamp });
+  if (trip) await tx.objectStore("trips").put({ ...trip, ...countsOf(siblings), updatedAt: timestamp });
   await tx.done;
   return place;
 }
@@ -249,8 +257,9 @@ export async function deletePlace(placeId) {
     ...media.map((item) => tx.objectStore("media").delete(item.id)),
   ]);
   if (place) {
+    const siblings = await tx.objectStore("places").index("tripId").getAll(place.tripId);
     const trip = await tx.objectStore("trips").get(place.tripId);
-    if (trip) await tx.objectStore("trips").put({ ...trip, updatedAt: now() });
+    if (trip) await tx.objectStore("trips").put({ ...trip, ...countsOf(siblings), updatedAt: now() });
   }
   await tx.done;
 }
@@ -263,7 +272,7 @@ export async function reorderPlaces(tripId, orderedPlaces) {
     orderedPlaces.map((place, index) => tx.objectStore("places").put({ ...place, order: index + 1, updatedAt: timestamp }))
   );
   const trip = await tx.objectStore("trips").get(tripId);
-  if (trip) await tx.objectStore("trips").put({ ...trip, updatedAt: timestamp });
+  if (trip) await tx.objectStore("trips").put({ ...trip, ...countsOf(orderedPlaces), updatedAt: timestamp });
   await tx.done;
 }
 
@@ -327,21 +336,31 @@ export async function publishTripToFeed({ trip, places, user }) {
  */
 export async function getTripCovers(trips = []) {
   const db = await dbPromise;
-  const wanted = new Map(trips.filter((t) => t.coverMediaId).map((t) => [t.coverMediaId, t.id]));
   const covers = {};
-  const firsts = {};
+  const store = db.transaction("media").store;
+  const index = store.index("tripId");
 
-  let cursor = await db.transaction("media").store.openCursor();
-  while (cursor) {
-    const item = cursor.value;
-    if (wanted.has(item.id)) covers[wanted.get(item.id)] = item;
-    if (item.tripId && !firsts[item.tripId] && item.type === "image") firsts[item.tripId] = item;
-    cursor = await cursor.continue();
+  // 여행마다 첫 사진 하나만 꺼낸다. 전체를 훑으면 모든 사진 blob이 메모리로
+  // 올라와 목록이 눈에 띄게 느려진다.
+  for (const trip of trips) {
+    if (trip.coverMediaId) {
+      const chosen = await store.get(trip.coverMediaId);
+      if (chosen) {
+        covers[trip.id] = chosen;
+        continue;
+      }
+    }
+
+    let cursor = await index.openCursor(IDBKeyRange.only(trip.id));
+    while (cursor) {
+      if (cursor.value.type === "image") {
+        covers[trip.id] = cursor.value;
+        break;
+      }
+      cursor = await cursor.continue();
+    }
   }
 
-  Object.entries(firsts).forEach(([tripId, item]) => {
-    if (!covers[tripId]) covers[tripId] = item;
-  });
   return covers;
 }
 
@@ -420,15 +439,23 @@ export async function exportBackup({ includeMedia = true } = {}) {
   };
 }
 
-export async function getTripCounts() {
+export async function getTripCounts(trips = []) {
+  const missing = trips.filter((trip) => trip.placeCount === undefined);
+  const counts = Object.fromEntries(
+    trips
+      .filter((trip) => trip.placeCount !== undefined)
+      .map((trip) => [trip.id, { places: trip.placeCount, days: trip.dayCount || 0 }])
+  );
+  if (!missing.length) return counts;
+
+  // 예전 기록에는 개수가 새겨져 있지 않다. 그때만 한 번 세어 둔다.
   const db = await dbPromise;
   const places = await db.getAll("places");
-  return places.reduce((acc, place) => {
-    const entry = (acc[place.tripId] ||= { places: 0, days: 0 });
-    entry.places += 1;
-    entry.days = Math.max(entry.days, place.day || 1);
-    return acc;
-  }, {});
+  missing.forEach((trip) => {
+    const own = places.filter((place) => place.tripId === trip.id);
+    counts[trip.id] = { places: own.length, days: own.reduce((m, p) => Math.max(m, p.day || 1), 0) };
+  });
+  return counts;
 }
 
 /* --- profile photo ---------------------------------------------------------- */

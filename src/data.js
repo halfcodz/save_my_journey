@@ -112,10 +112,10 @@ export const clearAvatar = localData.clearAvatar;
  * Media never leaves the device, so photo counts are always local. Trip and pin
  * counts follow whichever backend actually owns the trips.
  */
-export async function getTripCounts() {
-  if (!usesFirebaseBackend) return localData.getTripCounts();
+export async function getTripCounts(trips = []) {
+  if (!usesFirebaseBackend) return localData.getTripCounts(trips);
   const firebaseData = await getFirebaseBackend();
-  return firebaseData.getTripCounts();
+  return firebaseData.getTripCounts(trips);
 }
 
 export async function getStats({ trips, tripCounts } = {}) {
@@ -126,7 +126,7 @@ export async function getStats({ trips, tripCounts } = {}) {
   // not read the same Firestore documents twice.
   const [nextTrips, counts] = await Promise.all([
     trips ?? listTrips(),
-    tripCounts ?? getTripCounts(),
+    tripCounts ?? listTrips().then((list) => getTripCounts(list)),
   ]);
   return {
     ...localStats,

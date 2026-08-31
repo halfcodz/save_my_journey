@@ -149,10 +149,28 @@ export async function deleteTrip(tripId) {
   await deleteDoc(tripDoc(tripId));
 }
 
+/**
+ * Writes the place and day counts onto the trip. Without this the trip list has
+ * to query every trip's places just to say "3일차까지" — one round trip per
+ * trip, every time the list loads.
+ */
+async function stampCounts(tripId) {
+  const places = await getPlaces(tripId);
+  await setDoc(
+    tripDoc(tripId),
+    {
+      placeCount: places.length,
+      dayCount: places.reduce((max, place) => Math.max(max, place.day || 1), 0),
+      updatedAt: now(),
+    },
+    { merge: true }
+  );
+}
+
 export async function deletePlace(placeId, tripId) {
   if (!tripId) throw new Error("여행 ID가 필요합니다.");
   await deleteDoc(placeDoc(tripId, placeId));
-  await updateTrip({ id: tripId });
+  await stampCounts(tripId);
 }
 
 export async function getPlaces(tripId) {
@@ -169,7 +187,7 @@ export async function savePlace(placeInput) {
     createdAt: placeInput.createdAt || timestamp,
   };
   await setDoc(placeDoc(place.tripId, place.id), place, { merge: true });
-  await updateTrip({ id: place.tripId });
+  await stampCounts(place.tripId);
   return place;
 }
 
@@ -180,7 +198,7 @@ export async function reorderPlaces(tripId, orderedPlaces) {
       setDoc(placeDoc(tripId, place.id), { ...place, order: index + 1, updatedAt: timestamp }, { merge: true })
     )
   );
-  await updateTrip({ id: tripId });
+  await stampCounts(tripId);
 }
 
 export async function listFeedPosts() {
@@ -227,14 +245,22 @@ export async function changePassword({ currentPassword, nextPassword }) {
   return { id: current.uid, name: current.displayName || "여행자", email: current.email };
 }
 
-export async function getTripCounts() {
+export async function getTripCounts(trips = []) {
   requireFirebase();
-  const trips = await listTrips();
-  const entries = await Promise.all(
-    trips.map(async (trip) => {
+  const missing = trips.filter((trip) => trip.placeCount === undefined);
+  const counts = Object.fromEntries(
+    trips
+      .filter((trip) => trip.placeCount !== undefined)
+      .map((trip) => [trip.id, { places: trip.placeCount, days: trip.dayCount || 0 }])
+  );
+
+  // 개수가 새겨지기 전에 만든 여행만 한 번 세고, 그 김에 새겨 둔다.
+  await Promise.all(
+    missing.map(async (trip) => {
       const places = await getPlaces(trip.id);
-      return [trip.id, { places: places.length, days: places.reduce((m, p) => Math.max(m, p.day || 1), 0) }];
+      counts[trip.id] = { places: places.length, days: places.reduce((m, p) => Math.max(m, p.day || 1), 0) };
+      await stampCounts(trip.id).catch(() => {});
     })
   );
-  return Object.fromEntries(entries);
+  return counts;
 }

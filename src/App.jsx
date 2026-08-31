@@ -96,8 +96,8 @@ export default function App({ updateReady = false, onApplyUpdate }) {
   /* --- loading ----------------------------------------------------------- */
 
   const loadLibrary = useCallback(async (activeUser) => {
-    const [nextTrips, counts, nextPosts] = await Promise.all([listTrips(), getTripCounts(), listFeedPosts()]);
-    const nextCovers = await getTripCovers(nextTrips);
+    const [nextTrips, nextPosts] = await Promise.all([listTrips(), listFeedPosts()]);
+    const [counts, nextCovers] = await Promise.all([getTripCounts(nextTrips), getTripCovers(nextTrips)]);
     const nextStats = await getStats({ trips: nextTrips, tripCounts: counts });
     setTrips(nextTrips.map((trip) => ({ ...trip, placeCount: counts[trip.id]?.places || 0, dayCount: counts[trip.id]?.days || 0 })));
     setCovers(nextCovers);
