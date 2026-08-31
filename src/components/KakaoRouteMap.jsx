@@ -39,7 +39,6 @@ export default function KakaoRouteMap({
   const selectRef = useRef(onSelectPlace);
   const pickRef = useRef(onPickPoint);
   const [route, setRoute] = useState(null);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     selectRef.current = onSelectPlace;
@@ -67,7 +66,7 @@ export default function KakaoRouteMap({
         observer.observe(nodeRef.current);
         mapRef.current._observer = observer;
       })
-      .catch(() => !cancelled && setFailed(true));
+      .catch(() => {});
 
     return () => {
       cancelled = true;
@@ -150,14 +149,6 @@ export default function KakaoRouteMap({
 
   const distance = route?.distance;
   const driveSeconds = route?.duration;
-
-  if (failed) {
-    return (
-      <div className="detail-map map-fallback">
-        <p>지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
-      </div>
-    );
-  }
 
   return (
     <>

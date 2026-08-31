@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "./Icons.jsx";
 import RouteMap from "./RouteMapSwitch.jsx";
 import { dayLabel, formatClock, groupByDay, useMediaUrls, useThemeColor } from "../hooks.js";
@@ -23,6 +23,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   const [mapOpen, setMapOpen] = useState(false);
   const [mapPlaceId, setMapPlaceId] = useState("");
   const frameRef = useRef(null);
+  const stageRef = useRef(null);
   const gestureRef = useRef(null);
 
   useThemeColor("#000000");
@@ -76,7 +77,74 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
 
   const width = () => frameRef.current?.clientWidth || 1;
 
+  const beginGesture = (target, x, y, timeStamp, id) => {
+    if (target.closest?.("[data-no-swipe]")) return false;
+    gestureRef.current = { id, x, y, lastX: x, lastT: timeStamp, velocity: 0, axis: null, moved: false };
+    return true;
+  };
+
+  const moveGesture = (x, y, timeStamp) => {
+    const g = gestureRef.current;
+    if (!g) return;
+
+    const dx = x - g.x;
+    const dy = y - g.y;
+
+    if (!g.axis) {
+      if (Math.abs(dx) < AXIS_SLOP && Math.abs(dy) < AXIS_SLOP) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      g.moved = true;
+      setDragAxis(g.axis);
+      setAnimating(false);
+    }
+
+    if (g.axis === "y") {
+      if (dy < 0) setDrag(Math.max(-MAP_PULL, dy) / MAP_PULL);
+      return;
+    }
+
+    const dt = timeStamp - g.lastT;
+    if (dt > 0) g.velocity = (x - g.lastX) / dt;
+    g.lastX = x;
+    g.lastT = timeStamp;
+
+    const atStart = dayIndex === 0 && dx > 0;
+    const atEnd = dayIndex === framesByDay.length - 1 && dx < 0;
+    setDrag((atStart || atEnd ? dx * 0.3 : dx) / width());
+  };
+
+  const endGesture = (x, y) => {
+    const g = gestureRef.current;
+    gestureRef.current = null;
+    setAnimating(true);
+    setDragAxis(null);
+    if (!g) return;
+
+    if (!g.moved) {
+      const rect = frameRef.current.getBoundingClientRect();
+      if (x - rect.left < rect.width / 3) prevPhoto();
+      else nextPhoto();
+      setDrag(0);
+      return;
+    }
+
+    if (g.axis === "y") {
+      if (y - g.y < -MAP_PULL * 0.6) {
+        setMapPlaceId(frame?.place.id || "");
+        setMapOpen(true);
+      }
+      setDrag(0);
+      return;
+    }
+
+    const dx = x - g.x;
+    const passed = Math.abs(dx) > width() * SWIPE_DISTANCE || Math.abs(g.velocity) > SWIPE_VELOCITY;
+    if (passed) goDay(dayIndex + (dx < 0 ? 1 : -1));
+    setDrag(0);
+  };
+
   const onPointerDown = (event) => {
+    if (event.pointerType === "touch") return; // 터치는 touch 이벤트가 맡는다
     if (event.target.closest("[data-no-swipe]")) return;
     gestureRef.current = {
       id: event.pointerId,
@@ -91,6 +159,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   };
 
   const onPointerMove = (event) => {
+    if (event.pointerType === "touch") return;
     const g = gestureRef.current;
     if (!g || event.pointerId !== g.id) return;
 
@@ -121,6 +190,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   };
 
   const onPointerUp = (event) => {
+    if (event.pointerType === "touch") return;
     const g = gestureRef.current;
     gestureRef.current = null;
     setAnimating(true);
@@ -152,6 +222,40 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
     if (passed) goDay(dayIndex + (dx < 0 ? 1 : -1));
     setDrag(0);
   };
+
+  // React는 touchmove를 passive로 붙여 preventDefault가 통하지 않는다.
+  // iOS가 제스처를 스크롤로 가져가 pointercancel을 쏘는 것을 막으려면 직접 건다.
+  useEffect(() => {
+    const node = stageRef.current;
+    if (!node) return undefined;
+
+    const start = (event) => {
+      if (event.touches.length !== 1) return;
+      const t = event.touches[0];
+      beginGesture(event.target, t.clientX, t.clientY, event.timeStamp, "touch");
+    };
+    const move = (event) => {
+      if (!gestureRef.current || event.touches.length !== 1) return;
+      const t = event.touches[0];
+      moveGesture(t.clientX, t.clientY, event.timeStamp);
+      if (gestureRef.current?.axis && event.cancelable) event.preventDefault();
+    };
+    const end = (event) => {
+      const t = event.changedTouches[0];
+      endGesture(t?.clientX ?? 0, t?.clientY ?? 0);
+    };
+
+    node.addEventListener("touchstart", start, { passive: true });
+    node.addEventListener("touchmove", move, { passive: false });
+    node.addEventListener("touchend", end, { passive: true });
+    node.addEventListener("touchcancel", end, { passive: true });
+    return () => {
+      node.removeEventListener("touchstart", start);
+      node.removeEventListener("touchmove", move);
+      node.removeEventListener("touchend", end);
+      node.removeEventListener("touchcancel", end);
+    };
+  });
 
   useEffect(() => {
     const onKey = (event) => {
@@ -188,6 +292,7 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
   return (
     <section className="reels" aria-label={`${trip.title} 코스 보기`} ref={frameRef}>
       <div
+        ref={stageRef}
         className={`reel-stage${animating ? " is-settling" : ""}`}
         style={trackStyle}
         onPointerDown={onPointerDown}
@@ -248,7 +353,6 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
 
       {mapOpen ? (
         <div className="course-map" role="dialog" aria-label={`${dayLabel(current.day)} 지도`}>
-          <Suspense fallback={<div className="loading-screen">지도를 여는 중</div>}>
             <RouteMap
               places={current.places}
               kind={trip.kind}
@@ -257,7 +361,6 @@ export default function CourseView({ trip, places, mediaByDay, onClose }) {
               topPadding={190}
               bottomPadding={230}
             />
-          </Suspense>
 
           <div className="course-map-bar">
             <span className="float-title">
